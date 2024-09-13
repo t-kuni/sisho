@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/t-kuni/llm-coding-example/sisho/cmd/addCommand"
-	"github.com/t-kuni/llm-coding-example/sisho/cmd/initCommand"
-	"github.com/t-kuni/llm-coding-example/sisho/cmd/makeCommand"
+	"github.com/t-kuni/sisho/cmd/addCommand"
+	"github.com/t-kuni/sisho/cmd/initCommand"
+	"github.com/t-kuni/sisho/cmd/makeCommand"
 )
 
 type RootCommand struct {

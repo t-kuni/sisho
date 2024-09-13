@@ -1,7 +1,7 @@
 package knowledge
 
 import (
-	"github.com/t-kuni/llm-coding-example/sisho/prompts"
+	"github.com/t-kuni/sisho/prompts"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"

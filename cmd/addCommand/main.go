@@ -3,8 +3,8 @@ package addCommand
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"github.com/t-kuni/llm-coding-example/sisho/kinds"
-	"github.com/t-kuni/llm-coding-example/sisho/knowledge"
+	"github.com/t-kuni/sisho/kinds"
+	"github.com/t-kuni/sisho/knowledge"
 	"os"
 	"path/filepath"
 )
