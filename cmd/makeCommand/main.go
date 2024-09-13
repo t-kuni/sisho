@@ -151,7 +151,7 @@ func getAdditionalInstructions() (string, error) {
 		editor = "vi"
 	}
 
-	tempFile, err := os.CreateTemp("", "llm-instructions-*.txt")
+	tempFile, err := os.CreateTemp("", "sisho-instructions-*.txt")
 	if err != nil {
 		return "", err
 	}
@@ -176,7 +176,7 @@ func getAdditionalInstructions() (string, error) {
 }
 
 func saveHistory(rootDir, prompt, answer string) error {
-	historyDir := filepath.Join(rootDir, ".tobi", "history")
+	historyDir := filepath.Join(rootDir, ".sisho", "history")
 	err := os.MkdirAll(historyDir, 0755)
 	if err != nil {
 		return err

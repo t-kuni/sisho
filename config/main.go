@@ -64,9 +64,8 @@ func findConfig() (string, error) {
 
 	// ルートディレクトリまでループしてファイルを探す
 	for {
-		// `llm-config.yml` または `llm-config.yaml` が存在するかをチェック
-		ymlPath := filepath.Join(currentDir, "llm-config.yml")
-		yamlPath := filepath.Join(currentDir, "llm-config.yaml")
+		ymlPath := filepath.Join(currentDir, "sisho.yml")
+		yamlPath := filepath.Join(currentDir, "sisho.yaml")
 
 		if _, err := os.Stat(ymlPath); err == nil {
 			return ymlPath, nil
@@ -84,5 +83,5 @@ func findConfig() (string, error) {
 		currentDir = filepath.Dir(currentDir)
 	}
 
-	return "", errors.New("llm-config.ymlまたはllm-config.yamlが見つかりませんでした")
+	return "", errors.New("sisho.ymlまたはsisho.yamlが見つかりませんでした")
 }

@@ -19,7 +19,7 @@ command make [path1], [path2]...
   * 入力したテキストはprompt.md.tmplのInstructionsとして渡される
 * promptに含めるknowledgeのパスの一覧を標準出力に出力する
 * makeの履歴データについて
-  * make毎に `プロジェクトルート/.tobi/history/XXXX` フォルダを作成する（これを単体履歴フォルダと呼ぶ）
+  * make毎に `プロジェクトルート/.sisho/history/XXXX` フォルダを作成する（これを単体履歴フォルダと呼ぶ）
     * XXXXはKSUID
   * 履歴フォルダには以下のファイルを作成する
     * `YYYY-MM-DDTHH:MM:SS` : makeを実行した日時(ファイルは空ファイル)

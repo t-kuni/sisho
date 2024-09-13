@@ -8,7 +8,7 @@ go install github.com/t-kuni/sisho
 go run main.go make [target path]
 ```
 
-## llm-config.yml\のサンプル
+## sisho.yml\のサンプル
 
 ```
 lang: ja
@@ -16,7 +16,7 @@ lang: ja
 
 ## プロジェクトルートとは
 
-プロジェクトルートは`llm-config.yml`が存在するディレクトリを指します。
+プロジェクトルートは`sisho.yml`が存在するディレクトリを指します。
 
 ## Target Codeとは
 
@@ -33,9 +33,9 @@ makeコマンドの引数で指定します。
 knowledge:
   - path: go.mod
     kind: dependencies
-  - path: llm/cmd/makeCommand/main.go:38
+  - path: cmd/makeCommand/main.go:38
     kind: examples
-  - path: llm/kinds/main.go
+  - path: kinds/main.go
     kind: implementations
   - path: README.md
     kind: specifications
