@@ -1,6 +1,10 @@
 # LLMでスキャフォルドするツール
 
 ```
+go install github.com/t-kuni/sisho
+```
+
+```
 go run main.go make [target path]
 ```
 
