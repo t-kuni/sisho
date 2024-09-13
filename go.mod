@@ -1,4 +1,4 @@
-module github.com/t-kuni/llm-coding-example/llm
+module github.com/t-kuni/llm-coding-example/sisho
 
 go 1.19
 

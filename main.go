@@ -3,7 +3,7 @@ package main
 import (
 	_ "embed"
 	"github.com/joho/godotenv"
-	"github.com/t-kuni/llm-coding-example/llm/cmd"
+	"github.com/t-kuni/llm-coding-example/sisho/cmd"
 	"path/filepath"
 	"runtime"
 )
