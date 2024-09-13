@@ -1,0 +1,29 @@
+あなたはプログラマです。以下の情報を参考にTarget Codeを作成してください。
+
+# Additional Instructions
+
+{{ .Instructions }}
+
+{{range .KnowledgeSets}}
+# {{ .Kind }}
+
+{{range .Knowledge}}
+```{{ .Path }}
+{{ .Content }}
+```
+
+{{end}}
+{{end}}
+
+# Target Codes (Before)
+
+{{range .Targets }}
+```{{ .Path }}
+{{ .Content }}
+```
+
+{{end}}
+
+# Targets Codes (After)
+
+```{{ (index .Targets 0).Path }}
