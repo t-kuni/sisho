@@ -2,7 +2,24 @@
 
 ```
 go install github.com/t-kuni/sisho
+sisho init
+
+# Add knowledge
+# Syntax: sisho add [kind] [path]
+# Example:
+sisho add specifications swagger.yml
+sisho add specifications er.mmd
+sisho add examples handlers/getUser.go
+sisho add implementations handlers/getUser.go
+sisho add dependencies go.mod
+
+# Code generation
+# Syntax: sisho make [target path1] [target path2] ... 
+export ANTHROPIC_API_KEY="xxxx"
+sisho make handlers/postUser.go
 ```
+
+# Development
 
 ```
 go run main.go make [target path]
