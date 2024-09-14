@@ -1,10 +1,13 @@
 # LLMでスキャフォルドするツール
 
 ```
+# Install
 go install github.com/t-kuni/sisho
+
+# Initialize project
 sisho init
 
-# Add knowledge
+# Add knowledge to generate code
 # Syntax: sisho add [kind] [path]
 # Example:
 sisho add specifications swagger.yml
