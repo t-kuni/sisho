@@ -1,23 +1,9 @@
 knowledge:
   - path: go.mod
     kind: dependencies
-  - path: cmd/makeCommand/main.go
-    kind: examples
   - path: kinds/main.go
     kind: implementations
-  - path: README.md
-    kind: specifications
   - path: config/main.go
-    kind: implementations
-  - path: cmd/addCommand/README.md
-    kind: specifications
-  - path: cmd/makeCommand/README.md
-    kind: specifications
-  - path: prompts/prompt.md.tmpl
-    kind: implementations
-  - path: prompts/oneMoreMake/main.go
-    kind: implementations
-  - path: prompts/oneMoreMake/prompt.md.tmpl
     kind: implementations
   - path: knowledge/main.go
     kind: implementations

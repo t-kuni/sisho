@@ -1,3 +1,5 @@
 knowledge:
   - path: addCommand/main.go
     kind: examples
+  - path: makeCommand/main.go
+    kind: examples

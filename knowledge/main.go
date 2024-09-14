@@ -1,6 +1,7 @@
 package knowledge
 
 import (
+	"github.com/t-kuni/sisho/config"
 	"github.com/t-kuni/sisho/prompts"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -16,10 +17,10 @@ type Knowledge struct {
 	Kind string `yaml:"kind"`
 }
 
-func ConvertToKnowledgeSet(rootDir string, KnowledgeList []Knowledge) ([]prompts.KnowledgeSet, error) {
+func ConvertToKnowledgeSet(rootDir string, knowledgeList []Knowledge) ([]prompts.KnowledgeSet, error) {
 	kindMap := make(map[string][]prompts.Knowledge)
 
-	for _, knowledge := range KnowledgeList {
+	for _, knowledge := range knowledgeList {
 		content, err := os.ReadFile(filepath.Join(rootDir, knowledge.Path))
 		if err != nil {
 			return nil, err
@@ -43,43 +44,72 @@ func ConvertToKnowledgeSet(rootDir string, KnowledgeList []Knowledge) ([]prompts
 	return knowledgeSets, nil
 }
 
-func ScanKnowledge(rootDir string, targetPaths []string) ([]Knowledge, error) {
-	var knowledgeList []Knowledge
+func ScanKnowledge(rootDir string, targetPaths []string, cfg config.Config) ([]Knowledge, error) {
 	uniqueKnowledge := make(map[string]Knowledge)
 
 	for _, targetPath := range targetPaths {
-		currentDir, err := filepath.Abs(filepath.Dir(targetPath))
+		// .knowledge.ymlファイルのスキャン
+		knowledgeFromYml, err := scanKnowledgeYml(rootDir, targetPath)
 		if err != nil {
 			return nil, err
 		}
+		for _, k := range knowledgeFromYml {
+			uniqueKnowledge[k.Path] = k
+		}
 
-		for {
-			knowledgeFilePath := filepath.Join(currentDir, ".knowledge.yml")
-			if _, err := os.Stat(knowledgeFilePath); !os.IsNotExist(err) {
-				f, err := ReadKnowledge(knowledgeFilePath)
-				if err != nil {
-					return nil, err
-				}
-				for _, k := range f.KnowledgeList {
-					// Convert path to relative path from rootDir
-					relPath, err := filepath.Rel(rootDir, filepath.Join(currentDir, k.Path))
-					if err != nil {
-						return nil, err
-					}
-					k.Path = relPath
-					uniqueKnowledge[k.Path] = k
-				}
+		// auto-collectの処理
+		autoCollectedFiles, err := config.CollectAutoCollectFiles(cfg, rootDir, targetPath)
+		if err != nil {
+			return nil, err
+		}
+		for _, file := range autoCollectedFiles {
+			relPath, err := filepath.Rel(rootDir, file)
+			if err != nil {
+				return nil, err
 			}
-
-			if currentDir == rootDir {
-				break
+			uniqueKnowledge[relPath] = Knowledge{
+				Path: relPath,
+				Kind: "specifications", // auto-collectされたファイルはspecificationsとして扱う
 			}
-			currentDir = filepath.Dir(currentDir)
 		}
 	}
 
+	var knowledgeList []Knowledge
 	for _, k := range uniqueKnowledge {
 		knowledgeList = append(knowledgeList, k)
+	}
+
+	return knowledgeList, nil
+}
+
+func scanKnowledgeYml(rootDir string, targetPath string) ([]Knowledge, error) {
+	var knowledgeList []Knowledge
+	currentDir, err := filepath.Abs(filepath.Dir(targetPath))
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		knowledgeFilePath := filepath.Join(currentDir, ".knowledge.yml")
+		if _, err := os.Stat(knowledgeFilePath); !os.IsNotExist(err) {
+			f, err := ReadKnowledge(knowledgeFilePath)
+			if err != nil {
+				return nil, err
+			}
+			for _, k := range f.KnowledgeList {
+				relPath, err := filepath.Rel(rootDir, filepath.Join(currentDir, k.Path))
+				if err != nil {
+					return nil, err
+				}
+				k.Path = relPath
+				knowledgeList = append(knowledgeList, k)
+			}
+		}
+
+		if currentDir == rootDir {
+			break
+		}
+		currentDir = filepath.Dir(currentDir)
 	}
 
 	return knowledgeList, nil

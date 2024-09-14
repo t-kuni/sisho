@@ -1,1 +1,4 @@
 lang: ja
+auto-collect:
+  README.md: true
+  "[TARGET_CODE].md": true

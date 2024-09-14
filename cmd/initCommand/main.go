@@ -32,7 +32,11 @@ func NewInitCommand() *InitCommand {
 
 			// Create default configuration
 			defaultConfig := config.Config{
-				Lang: "en", // Default language set to English
+				Lang: "ja", // Default language set to Japanese
+				AutoCollect: config.AutoCollect{
+					ReadmeMd:     true,
+					TargetCodeMd: true,
+				},
 			}
 
 			configHolder := config.ConfigHolder{

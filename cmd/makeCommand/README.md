@@ -8,9 +8,10 @@ LLMを使ってpathで指定したファイルを生成する
 command make [path1], [path2]...
 ```
 
-* path
+* pathについて
   * カレントディレクトリからの相対パスでTarget Codeを指定する
   * 複数指定可能
+  * LLMで生成した結果は、ファイルに直接書き込まず、標準出力に出力する
 
 * promptはprompts/prompt.md.tmplに従う
 * `-p`, `--prompt` オプションについて

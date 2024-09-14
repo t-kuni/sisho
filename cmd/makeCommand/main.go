@@ -29,53 +29,63 @@ func NewMakeCommand() *MakeCommand {
 		Short: "Generate files using LLM",
 		Long:  `Generate files at the specified paths using LLM based on the knowledge sets.`,
 		Args:  cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			configHolder, err := config.ReadConfig()
+		RunE:  runMake(&promptFlag),
+	}
+
+	cmd.Flags().BoolVarP(&promptFlag, "prompt", "p", false, "Open editor for additional instructions")
+
+	return &MakeCommand{
+		CobraCommand: cmd,
+	}
+}
+
+func runMake(promptFlag *bool) func(cmd *cobra.Command, args []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		configHolder, err := config.ReadConfig()
+		if err != nil {
+			return err
+		}
+
+		scannedKnowledge, err := knowledge.ScanKnowledge(configHolder.RootDir, args, configHolder.Config)
+		if err != nil {
+			return err
+		}
+
+		knowledgeSets, err := knowledge.ConvertToKnowledgeSet(configHolder.RootDir, scannedKnowledge)
+		if err != nil {
+			return err
+		}
+
+		var instructions string
+		if *promptFlag {
+			instructions, err = getAdditionalInstructions()
+			if err != nil {
+				return err
+			}
+		}
+
+		printKnowledgePaths(knowledgeSets)
+
+		chat := claude.ClaudeChat{}
+
+		for i, path := range args {
+			target, err := readTarget(path)
 			if err != nil {
 				return err
 			}
 
-			// Perform knowledge scan for all target paths
-			scannedKnowledge, err := knowledge.ScanKnowledge(configHolder.RootDir, args)
-			if err != nil {
-				return err
+			var prompt string
+			if i == 0 {
+				prompt, err = prompts.BuildPrompt(prompts.PromptParam{
+					KnowledgeSets: knowledgeSets,
+					Targets:       []prompts.Target{target},
+					Instructions:  instructions,
+				})
+			} else {
+				prompt, err = oneMoreMake.BuildPrompt(oneMoreMake.PromptParam{
+					Path: path,
+				})
 			}
-
-			knowledgeSets, err := knowledge.ConvertToKnowledgeSet(configHolder.RootDir, scannedKnowledge)
-			if err != nil {
-				return err
-			}
-
-			var instructions string
-			if promptFlag {
-				instructions, err = getAdditionalInstructions()
-				if err != nil {
-					return err
-				}
-			}
-
-			// Output the list of knowledge paths
-			fmt.Println("Knowledge paths used:")
-			for _, set := range knowledgeSets {
-				for _, k := range set.Knowledge {
-					fmt.Printf("- %s\n", k.Path)
-				}
-			}
-			fmt.Println("")
-
-			chat := claude.ClaudeChat{}
-
-			target, err := readTarget(args[0])
-			if err != nil {
-				return err
-			}
-
-			// First prompt
-			prompt, err := prompts.BuildPrompt(prompts.PromptParam{
-				KnowledgeSets: knowledgeSets,
-				Targets:       []prompts.Target{target},
-				Instructions:  instructions,
-			})
 			if err != nil {
 				return err
 			}
@@ -85,45 +95,15 @@ func NewMakeCommand() *MakeCommand {
 				return err
 			}
 
-			// Save history for the first prompt
 			err = saveHistory(configHolder.RootDir, prompt, answer)
 			if err != nil {
 				return err
 			}
 
 			fmt.Println(answer)
+		}
 
-			// Second prompt (and potentially more)
-			for _, path := range args[1:] {
-				oneMorePrompt, err := oneMoreMake.BuildPrompt(oneMoreMake.PromptParam{
-					Path: path,
-				})
-				if err != nil {
-					return err
-				}
-
-				oneMoreAnswer, err := chat.Send(oneMorePrompt)
-				if err != nil {
-					return err
-				}
-
-				fmt.Println(oneMoreAnswer)
-
-				// Save history for additional prompts
-				err = saveHistory(configHolder.RootDir, oneMorePrompt, oneMoreAnswer)
-				if err != nil {
-					return err
-				}
-			}
-
-			return nil
-		},
-	}
-
-	cmd.Flags().BoolVarP(&promptFlag, "prompt", "p", false, "Open editor for additional instructions")
-
-	return &MakeCommand{
-		CobraCommand: cmd,
+		return nil
 	}
 }
 
@@ -189,21 +169,18 @@ func saveHistory(rootDir, prompt, answer string) error {
 		return err
 	}
 
-	// Create timestamp file
 	timestampFile := filepath.Join(singleHistoryDir, time.Now().Format("2006-01-02T15:04:05"))
 	_, err = os.Create(timestampFile)
 	if err != nil {
 		return err
 	}
 
-	// Save prompt
 	promptFile := filepath.Join(singleHistoryDir, "prompt.md")
 	err = os.WriteFile(promptFile, []byte(prompt), 0644)
 	if err != nil {
 		return err
 	}
 
-	// Save answer
 	answerFile := filepath.Join(singleHistoryDir, "answer.md")
 	err = os.WriteFile(answerFile, []byte(answer), 0644)
 	if err != nil {
@@ -211,4 +188,14 @@ func saveHistory(rootDir, prompt, answer string) error {
 	}
 
 	return nil
+}
+
+func printKnowledgePaths(knowledgeSets []prompts.KnowledgeSet) {
+	fmt.Println("Knowledge paths used:")
+	for _, set := range knowledgeSets {
+		for _, k := range set.Knowledge {
+			fmt.Printf("- %s\n", k.Path)
+		}
+	}
+	fmt.Println("")
 }

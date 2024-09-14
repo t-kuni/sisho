@@ -1,0 +1,7 @@
+knowledge:
+  - path: ../../prompts/prompt.md.tmpl
+    kind: implementations
+  - path: ../../prompts/oneMoreMake/main.go
+    kind: implementations
+  - path: ../../prompts/oneMoreMake/prompt.md.tmpl
+    kind: implementations
