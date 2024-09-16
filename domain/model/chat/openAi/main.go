@@ -1,10 +1,12 @@
 package openAi
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"os"
+	"strings"
 )
 
 type OpenAiChat struct {
@@ -18,6 +20,7 @@ func (c *OpenAiChat) addToHistory(m Message) {
 type OpenAiRequest struct {
 	Model    string    `json:"model"`
 	Messages []Message `json:"messages"`
+	Stream   bool      `json:"stream"`
 }
 
 type Message struct {
@@ -25,19 +28,16 @@ type Message struct {
 	Content string `json:"content"`
 }
 
-type OpenAiResponse struct {
-	Choices []OpenAiResponseChoice `json:"choices"`
+type OpenAiResponseStreamChoice struct {
+	Choices []struct {
+		Delta struct {
+			Content string `json:"content"`
+		} `json:"delta"`
+		FinishReason string `json:"finish_reason"`
+	} `json:"choices"`
 }
 
-type OpenAiResponseChoice struct {
-	Message OpenAiResponseChoiceMessage `json:"message"`
-}
-
-type OpenAiResponseChoiceMessage struct {
-	Content string `json:"content"`
-}
-
-func (c *OpenAiChat) Send(prompt string, model string) (string, error) {
+func (c *OpenAiChat) Send(prompt string) (string, error) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		return "", fmt.Errorf("OpenAI APIキーが設定されていません")
@@ -52,8 +52,9 @@ func (c *OpenAiChat) Send(prompt string, model string) (string, error) {
 	})
 
 	requestBody := OpenAiRequest{
-		Model:    model,
+		Model:    "gpt-4o",
 		Messages: c.history, // 履歴全体をリクエストに含める
+		Stream:   true,      // ストリーミングを有効にする
 	}
 
 	jsonBody, err := json.Marshal(requestBody)
@@ -61,23 +62,52 @@ func (c *OpenAiChat) Send(prompt string, model string) (string, error) {
 		return "", err
 	}
 
-	var aiResponse OpenAiResponse
-
-	_, err = client.R().
+	// ストリームを処理する
+	resp, err := client.R().
 		SetHeader("Authorization", "Bearer "+apiKey).
 		SetHeader("Content-Type", "application/json").
 		SetBody(jsonBody).
-		SetResult(&aiResponse). // レスポンスを構造体にマッピング
+		SetDoNotParseResponse(true). // レスポンスを手動でパース
 		Post("https://api.openai.com/v1/chat/completions")
 	if err != nil {
 		return "", err
+	}
+	defer resp.RawBody().Close()
+
+	reader := bufio.NewReader(resp.RawBody())
+	var fullResponse strings.Builder
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+
+		// データ行のみを処理する
+		if strings.HasPrefix(line, "data: ") {
+			line = strings.TrimPrefix(line, "data: ")
+			if strings.TrimSpace(line) == "[DONE]" {
+				break
+			}
+
+			var streamResponse OpenAiResponseStreamChoice
+			if err := json.Unmarshal([]byte(line), &streamResponse); err != nil {
+				return "", err
+			}
+
+			// ストリームデータのコンテンツを追加
+			if len(streamResponse.Choices) > 0 {
+				fullResponse.WriteString(streamResponse.Choices[0].Delta.Content)
+				fmt.Print(streamResponse.Choices[0].Delta.Content) // 逐次出力
+			}
+		}
 	}
 
 	// AIからの返答を履歴に追加
 	c.addToHistory(Message{
 		Role:    "assistant",
-		Content: aiResponse.Choices[0].Message.Content,
+		Content: fullResponse.String(),
 	})
 
-	return aiResponse.Choices[0].Message.Content, nil
+	return fullResponse.String(), nil
 }
