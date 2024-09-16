@@ -3,7 +3,5 @@ knowledge:
       kind: dependencies
     - path: kinds/main.go
       kind: implementations
-    - path: config/main.go
-      kind: implementations
     - path: knowledge/main.go
       kind: implementations
