@@ -104,13 +104,14 @@ func runMake(promptFlag *bool, applyFlag *bool) func(cmd *cobra.Command, args []
 				return err
 			}
 
-			fmt.Println(answer)
-
 			if *applyFlag {
 				err = applyChanges(path, answer)
 				if err != nil {
 					return err
 				}
+				fmt.Printf("Applied changes to %s\n", path)
+			} else {
+				fmt.Println(answer)
 			}
 		}
 
@@ -212,7 +213,7 @@ func printKnowledgePaths(knowledgeSets []prompts.KnowledgeSet) {
 }
 
 func applyChanges(path string, answer string) error {
-	re := regexp.MustCompile("(?s)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "\n(.*?)```<!-- CODE_BLOCK_END -->")
+	re := regexp.MustCompile("(?s)\n<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "\n(.*?)```<!-- CODE_BLOCK_END -->\n")
 	matches := re.FindStringSubmatch(answer)
 
 	if len(matches) < 2 {
@@ -236,7 +237,6 @@ func applyChanges(path string, answer string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Applied changes to %s\n", path)
 	} else {
 		fmt.Printf("No changes needed for %s\n", path)
 	}
