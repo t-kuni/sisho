@@ -16,8 +16,8 @@ type AddCommand struct {
 func NewAddCommand() *AddCommand {
 	cmd := &cobra.Command{
 		Use:   "add [kind] [path]",
-		Short: "Add a file to .knowledges.yml",
-		Long:  `Add a specified file to .knowledges.yml in the current directory. If .knowledges.yml doesn't exist, it will be created.`,
+		Short: "Add a file to .knowledge.yml",
+		Long:  `Add a specified file to .knowledge.yml in the current directory. If .knowledge.yml doesn't exist, it will be created.`,
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			kindName := kinds.KindName(args[0])
@@ -42,12 +42,12 @@ func NewAddCommand() *AddCommand {
 			knowList := f.KnowledgeList
 
 			// Add new knowledge
-			absPath, err := filepath.Abs(path)
+			relPath, err := filepath.Rel(".", path)
 			if err != nil {
 				return err
 			}
 			newKnowledge := knowledge.Knowledge{
-				Path: absPath,
+				Path: relPath,
 				Kind: string(kindName),
 			}
 			knowList = append(knowList, newKnowledge)
@@ -58,7 +58,7 @@ func NewAddCommand() *AddCommand {
 				return err
 			}
 
-			fmt.Printf("Added %s to .knowledge.yml with kind %s\n", path, kindName)
+			fmt.Printf("Added %s to .knowledge.yml with kind %s\n", relPath, kindName)
 			return nil
 		},
 	}

@@ -58,10 +58,6 @@ auto-collect:
 本ツールでスキャフォルドする対象のコードを指します。
 makeコマンドの引数で指定します。
 
-## .knowledge.ymlとは
-
-* makeコマンド実行時にLLMに提示するファイルを指定するためのファイルです。
-
 ## Targetスキャンとは
 
 * プロジェクトルートからTarget Codeのディレクトリまでの各階層を走査し必要な処理を行うことです。
@@ -69,19 +65,27 @@ makeコマンドの引数で指定します。
   * 各階層の.knowledge.ymlを読み込む
   * 各階層のREADME.mdを読み込む
 
+## .knowledge.ymlとは
+
+* makeコマンド実行時にLLMに提示するファイルを指定するためのファイルです。
+
 ### .knowledge.ymlのサンプル
 
 ```yaml
 knowledge:
   - path: go.mod
     kind: dependencies
-  - path: cmd/makeCommand/main.go:38
+  - path: cmd/makeCommand/main.go
     kind: examples
   - path: kinds/main.go
     kind: implementations
   - path: README.md
     kind: specifications
 ```
+
+* path
+  * string型
+  * 当該.knowledge.ymlから対象ファイルまでの相対パスを指定します
 
 ### knowledgeスキャンとは
 
