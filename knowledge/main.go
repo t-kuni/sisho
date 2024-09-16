@@ -1,7 +1,7 @@
 package knowledge
 
 import (
-	"github.com/t-kuni/sisho/config"
+	"github.com/t-kuni/sisho/domain/service/autoCollect"
 	"github.com/t-kuni/sisho/prompts"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -44,7 +44,7 @@ func ConvertToKnowledgeSet(rootDir string, knowledgeList []Knowledge) ([]prompts
 	return knowledgeSets, nil
 }
 
-func ScanKnowledge(rootDir string, targetPaths []string, cfg config.Config) ([]Knowledge, error) {
+func ScanKnowledge(rootDir string, targetPaths []string, autoCollectService *autoCollect.AutoCollectService) ([]Knowledge, error) {
 	uniqueKnowledge := make(map[string]Knowledge)
 
 	for _, targetPath := range targetPaths {
@@ -58,17 +58,13 @@ func ScanKnowledge(rootDir string, targetPaths []string, cfg config.Config) ([]K
 		}
 
 		// auto-collectの処理
-		autoCollectedFiles, err := config.CollectAutoCollectFiles(cfg, rootDir, targetPath)
+		autoCollectedFiles, err := autoCollectService.CollectAutoCollectFiles(rootDir, targetPath)
 		if err != nil {
 			return nil, err
 		}
 		for _, file := range autoCollectedFiles {
-			relPath, err := filepath.Rel(rootDir, file)
-			if err != nil {
-				return nil, err
-			}
-			uniqueKnowledge[relPath] = Knowledge{
-				Path: relPath,
+			uniqueKnowledge[file] = Knowledge{
+				Path: file,
 				Kind: "specifications", // auto-collectされたファイルはspecificationsとして扱う
 			}
 		}

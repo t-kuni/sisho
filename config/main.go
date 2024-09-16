@@ -1,98 +1,19 @@
+// Package config provides configuration-related functionality for the project.
+// The actual implementation is split between domain and infrastructure layers.
 package config
 
 import (
-	"errors"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 )
 
-type Config struct {
-	Lang                string              `yaml:"lang"`
-	AutoCollect         AutoCollect         `yaml:"auto-collect"`
-	AdditionalKnowledge AdditionalKnowledge `yaml:"additional-knowledge"`
-}
+// This file is kept as a placeholder to maintain the package structure.
+// For actual configuration handling, refer to:
+// - domain/repository/config
+// - infrastructure/repository/config
 
-type AutoCollect struct {
-	ReadmeMd     bool `yaml:"README.md"`
-	TargetCodeMd bool `yaml:"[TARGET_CODE].md"`
-}
-
-type AdditionalKnowledge struct {
-	FolderStructure bool `yaml:"folder-structure"`
-}
-
-type ConfigHolder struct {
-	Path    string
-	RootDir string
-	Config
-}
-
-func ReadConfig() (ConfigHolder, error) {
-	path, err := findConfig()
-	if err != nil {
-		return ConfigHolder{}, err
-	}
-
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return ConfigHolder{}, err
-	}
-
-	var config Config
-	err = yaml.Unmarshal(content, &config)
-	if err != nil {
-		return ConfigHolder{}, err
-	}
-
-	return ConfigHolder{
-		Path:    path,
-		Config:  config,
-		RootDir: filepath.Dir(path),
-	}, nil
-}
-
-func WriteConfig(holder ConfigHolder) error {
-	content, err := yaml.Marshal(holder.Config)
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile(holder.Path, content, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func findConfig() (string, error) {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	for {
-		ymlPath := filepath.Join(currentDir, "sisho.yml")
-		yamlPath := filepath.Join(currentDir, "sisho.yaml")
-
-		if _, err := os.Stat(ymlPath); err == nil {
-			return ymlPath, nil
-		}
-		if _, err := os.Stat(yamlPath); err == nil {
-			return yamlPath, nil
-		}
-
-		if currentDir == filepath.Dir(currentDir) {
-			break
-		}
-
-		currentDir = filepath.Dir(currentDir)
-	}
-
-	return "", errors.New("sisho.ymlまたはsisho.yamlが見つかりませんでした")
-}
-
+// ContextScan scans the directory structure from the target path up to the root directory
+// and collects relevant files (README.md and [TARGET_CODE].md).
 func ContextScan(rootDir string, targetPath string) ([]string, error) {
 	var collectedFiles []string
 	currentDir, err := filepath.Abs(filepath.Dir(targetPath))
@@ -105,13 +26,13 @@ func ContextScan(rootDir string, targetPath string) ([]string, error) {
 	}
 
 	for {
-		// README.mdの収集
+		// Collect README.md
 		readmePath := filepath.Join(currentDir, "README.md")
 		if _, err := os.Stat(readmePath); err == nil {
 			collectedFiles = append(collectedFiles, readmePath)
 		}
 
-		// [TARGET_CODE].mdの収集
+		// Collect [TARGET_CODE].md
 		targetCodeMdPath := filepath.Join(currentDir, filepath.Base(targetPath)+".md")
 		if _, err := os.Stat(targetCodeMdPath); err == nil {
 			collectedFiles = append(collectedFiles, targetCodeMdPath)
@@ -126,6 +47,7 @@ func ContextScan(rootDir string, targetPath string) ([]string, error) {
 	return collectedFiles, nil
 }
 
+// CollectAutoCollectFiles filters the files collected by ContextScan based on the configuration.
 func CollectAutoCollectFiles(config Config, rootDir string, targetPath string) ([]string, error) {
 	files, err := ContextScan(rootDir, targetPath)
 	if err != nil {

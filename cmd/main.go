@@ -5,7 +5,12 @@ import (
 	"github.com/t-kuni/sisho/cmd/addCommand"
 	"github.com/t-kuni/sisho/cmd/initCommand"
 	"github.com/t-kuni/sisho/cmd/makeCommand"
+	"github.com/t-kuni/sisho/domain/service/autoCollect"
+	"github.com/t-kuni/sisho/domain/service/configFindService"
+	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"github.com/t-kuni/sisho/infrastructure/external/claude"
+	configRepo "github.com/t-kuni/sisho/infrastructure/repository/config"
+	fileRepo "github.com/t-kuni/sisho/infrastructure/repository/file"
 )
 
 type RootCommand struct {
@@ -26,9 +31,21 @@ func NewRootCommand() *RootCommand {
 	}
 
 	claudeClient := claude.NewClaudeClient()
+	fileRepository := fileRepo.NewFileRepository()
+	configRepository := configRepo.NewConfigRepository()
+	configFindSrv := configFindService.NewConfigFindService(fileRepository)
+	contextScanSrv := contextScan.NewContextScanService(fileRepository)
+	autoCollectSrv := autoCollect.NewAutoCollectService(configRepository, fileRepository, contextScanSrv)
 
-	cmd.AddCommand(initCommand.NewInitCommand().CobraCommand)
-	cmd.AddCommand(makeCommand.NewMakeCommand(claudeClient).CobraCommand)
+	cmd.AddCommand(initCommand.NewInitCommand(configRepository).CobraCommand)
+	cmd.AddCommand(makeCommand.NewMakeCommand(
+		claudeClient,
+		configFindSrv,
+		configRepository,
+		fileRepository,
+		autoCollectSrv,
+		contextScanSrv,
+	).CobraCommand)
 	cmd.AddCommand(addCommand.NewAddCommand().CobraCommand)
 
 	return &RootCommand{
