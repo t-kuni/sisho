@@ -5,6 +5,7 @@ import (
 	"github.com/t-kuni/sisho/cmd/addCommand"
 	"github.com/t-kuni/sisho/cmd/initCommand"
 	"github.com/t-kuni/sisho/cmd/makeCommand"
+	"github.com/t-kuni/sisho/infrastructure/external/claude"
 )
 
 type RootCommand struct {
@@ -13,9 +14,9 @@ type RootCommand struct {
 
 func NewRootCommand() *RootCommand {
 	cmd := &cobra.Command{
-		Use:   "",
-		Short: "",
-		Long:  ``,
+		Use:   "sisho",
+		Short: "A tool for scaffolding using LLM",
+		Long:  `Sisho is a command-line tool for scaffolding projects using Large Language Models (LLM).`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return nil
 		},
@@ -24,8 +25,10 @@ func NewRootCommand() *RootCommand {
 		},
 	}
 
+	claudeClient := claude.NewClaudeClient()
+
 	cmd.AddCommand(initCommand.NewInitCommand().CobraCommand)
-	cmd.AddCommand(makeCommand.NewMakeCommand().CobraCommand)
+	cmd.AddCommand(makeCommand.NewMakeCommand(claudeClient).CobraCommand)
 	cmd.AddCommand(addCommand.NewAddCommand().CobraCommand)
 
 	return &RootCommand{

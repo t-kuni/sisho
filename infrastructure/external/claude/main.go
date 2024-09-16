@@ -6,64 +6,31 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-resty/resty/v2"
+	"github.com/t-kuni/sisho/domain/external/claude"
 	"io"
 	"os"
 	"strings"
 )
 
-type ClaudeChat struct {
-	history []Message
+type ClaudeClient struct {
+	apiKey string
 }
 
-func (c *ClaudeChat) addToHistory(m Message) {
-	c.history = append(c.history, m)
-}
-
-type ClaudeRequest struct {
-	Model       string    `json:"model"`
-	Messages    []Message `json:"messages"`
-	MaxTokens   int       `json:"max_tokens"`
-	Temperature float64   `json:"temperature"`
-	Stream      bool      `json:"stream"`
-}
-
-type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type StreamResponse struct {
-	Type    string `json:"type"`
-	Message struct {
-		Content []struct {
-			Text string `json:"text"`
-			Type string `json:"type"`
-		} `json:"content"`
-		Role string `json:"role"`
-	} `json:"message"`
-	Delta struct {
-		Type string `json:"type"`
-		Text string `json:"text"`
-	}
-}
-
-func (c *ClaudeChat) Send(prompt string) (string, error) {
+func NewClaudeClient() *ClaudeClient {
 	apiKey := os.Getenv("ANTHROPIC_API_KEY")
 	if apiKey == "" {
-		return "", fmt.Errorf("Anthropic APIキーが設定されていません")
+		panic("Anthropic APIキーが設定されていません")
 	}
+	return &ClaudeClient{apiKey: apiKey}
+}
 
+func (c *ClaudeClient) SendMessage(messages []claude.Message) (string, error) {
 	client := resty.New()
-
-	c.addToHistory(Message{
-		Role:    "user",
-		Content: prompt,
-	})
 
 	requestBody := ClaudeRequest{
 		Model:     "claude-3-5-sonnet-20240620",
 		MaxTokens: 8192,
-		Messages:  c.history,
+		Messages:  convertMessages(messages),
 		Stream:    true,
 	}
 
@@ -73,7 +40,7 @@ func (c *ClaudeChat) Send(prompt string) (string, error) {
 	}
 
 	resp, err := client.R().
-		SetHeader("x-api-key", apiKey).
+		SetHeader("x-api-key", c.apiKey).
 		SetHeader("anthropic-version", "2023-06-01").
 		SetHeader("Content-Type", "application/json").
 		SetBody(jsonBody).
@@ -89,7 +56,22 @@ func (c *ClaudeChat) Send(prompt string) (string, error) {
 		return "", fmt.Errorf("API request failed with status code: %d", resp.StatusCode())
 	}
 
-	reader := bufio.NewReader(resp.RawBody())
+	return processStreamResponse(resp.RawBody())
+}
+
+func convertMessages(messages []claude.Message) []Message {
+	converted := make([]Message, len(messages))
+	for i, msg := range messages {
+		converted[i] = Message{
+			Role:    msg.Role,
+			Content: msg.Content,
+		}
+	}
+	return converted
+}
+
+func processStreamResponse(body io.ReadCloser) (string, error) {
+	reader := bufio.NewReader(body)
 	var fullResponse strings.Builder
 
 	for {
@@ -121,11 +103,32 @@ func (c *ClaudeChat) Send(prompt string) (string, error) {
 		}
 	}
 
-	responseText := fullResponse.String()
-	c.addToHistory(Message{
-		Role:    "assistant",
-		Content: responseText,
-	})
+	return fullResponse.String(), nil
+}
 
-	return responseText, nil
+type ClaudeRequest struct {
+	Model     string    `json:"model"`
+	Messages  []Message `json:"messages"`
+	MaxTokens int       `json:"max_tokens"`
+	Stream    bool      `json:"stream"`
+}
+
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type StreamResponse struct {
+	Type    string `json:"type"`
+	Message struct {
+		Content []struct {
+			Text string `json:"text"`
+			Type string `json:"type"`
+		} `json:"content"`
+		Role string `json:"role"`
+	} `json:"message"`
+	Delta struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	}
 }

@@ -28,6 +28,13 @@ sisho make handlers/postUser.go
 go run main.go make [target path]
 ```
 
+## Software Architecture
+
+* /cmd/main.go でサブコマンドの初期化、依存モジュールの初期化とDIを行う
+* /cmd/**/main.go に各サブコマンドの処理を記述する。ドメインロジックは大枠ここに記述される
+* /domain 配下にドメインモデルやビジネスロジック、infrastructure層とのインターフェースを定義する
+* /infrastructure 配下に外部との通信やファイルへのアクセスなどのI/O処理を定義する
+
 ## プロジェクトコンフィグについて
 
 * `sisho.yml`のこと

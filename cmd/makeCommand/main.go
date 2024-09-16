@@ -6,8 +6,9 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/spf13/cobra"
-	"github.com/t-kuni/sisho/chat/claude"
 	"github.com/t-kuni/sisho/config"
+	"github.com/t-kuni/sisho/domain/external/claude"
+	modelClaude "github.com/t-kuni/sisho/domain/model/chat/claude"
 	"github.com/t-kuni/sisho/knowledge"
 	"github.com/t-kuni/sisho/prompts"
 	"github.com/t-kuni/sisho/prompts/oneMoreMake"
@@ -21,9 +22,10 @@ import (
 
 type MakeCommand struct {
 	CobraCommand *cobra.Command
+	claudeClient claude.Client
 }
 
-func NewMakeCommand() *MakeCommand {
+func NewMakeCommand(claudeClient claude.Client) *MakeCommand {
 	var promptFlag bool
 	var applyFlag bool
 
@@ -32,7 +34,7 @@ func NewMakeCommand() *MakeCommand {
 		Short: "Generate files using LLM",
 		Long:  `Generate files at the specified paths using LLM based on the knowledge sets.`,
 		Args:  cobra.MinimumNArgs(1),
-		RunE:  runMake(&promptFlag, &applyFlag),
+		RunE:  runMake(&promptFlag, &applyFlag, claudeClient),
 	}
 
 	cmd.Flags().BoolVarP(&promptFlag, "prompt", "p", false, "Open editor for additional instructions")
@@ -40,10 +42,11 @@ func NewMakeCommand() *MakeCommand {
 
 	return &MakeCommand{
 		CobraCommand: cmd,
+		claudeClient: claudeClient,
 	}
 }
 
-func runMake(promptFlag *bool, applyFlag *bool) func(cmd *cobra.Command, args []string) error {
+func runMake(promptFlag *bool, applyFlag *bool, claudeClient claude.Client) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		configHolder, err := config.ReadConfig()
 		if err != nil {
@@ -70,7 +73,7 @@ func runMake(promptFlag *bool, applyFlag *bool) func(cmd *cobra.Command, args []
 
 		printKnowledgePaths(knowledgeSets)
 
-		chat := claude.ClaudeChat{}
+		chat := modelClaude.NewClaudeChat(claudeClient)
 
 		for i, path := range args {
 			target, err := readTarget(path)
