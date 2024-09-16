@@ -1,8 +1,18 @@
 あなたはプログラマです。以下の情報を参考にTarget Codeを作成してください。
 
+{{ if ne .Instructions "" }}
 # Additional Instructions
 
 {{ .Instructions }}
+{{ end }}
+
+{{ if ne .FolderStructure "" }}
+# Folder Structure
+
+```
+{{ .FolderStructure }}
+```
+{{ end }}
 
 {{range .KnowledgeSets}}
 # {{ .Kind }}

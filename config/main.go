@@ -8,13 +8,18 @@ import (
 )
 
 type Config struct {
-	Lang        string      `yaml:"lang"`
-	AutoCollect AutoCollect `yaml:"auto-collect"`
+	Lang                string              `yaml:"lang"`
+	AutoCollect         AutoCollect         `yaml:"auto-collect"`
+	AdditionalKnowledge AdditionalKnowledge `yaml:"additional-knowledge"`
 }
 
 type AutoCollect struct {
 	ReadmeMd     bool `yaml:"README.md"`
 	TargetCodeMd bool `yaml:"[TARGET_CODE].md"`
+}
+
+type AdditionalKnowledge struct {
+	FolderStructure bool `yaml:"folder-structure"`
 }
 
 type ConfigHolder struct {
@@ -121,7 +126,6 @@ func ContextScan(rootDir string, targetPath string) ([]string, error) {
 	return collectedFiles, nil
 }
 
-// CollectAutoCollectFiles関数を修正
 func CollectAutoCollectFiles(config Config, rootDir string, targetPath string) ([]string, error) {
 	files, err := ContextScan(rootDir, targetPath)
 	if err != nil {

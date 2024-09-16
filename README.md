@@ -22,19 +22,25 @@ export ANTHROPIC_API_KEY="xxxx"
 sisho make handlers/postUser.go
 ```
 
-# Development
+## Development
 
 ```
 go run main.go make [target path]
 ```
 
-## sisho.ymlのサンプル
+## プロジェクトコンフィグについて
+
+* `sisho.yml`のこと
+
+### プロジェクトコンフィグ(sisho.yml)のサンプル
 
 ```yaml
 lang: ja
 auto-collect:
   README.md: true
   "[TARGET_CODE].md": true
+additional-knowledge:
+  folder-structure: true
 ```
 
 ### auto-collectについて
@@ -48,6 +54,11 @@ auto-collect:
   * trueの場合、コンテキストスキャンを用いて、各階層の[TARGET_CODE].mdをknowledgeとしてLLMに提示する
   * [TARGET_CODE]はTarget Codeのファイル名を指す
   * kindはspecificationsとして扱う
+
+### additional-knowledge.folder-structureについて
+
+* bool型
+* trueの場合、makeコマンド実行時、プロジェクトルート配下のフォルダ構造情報をプロンプトに追加する
 
 ## プロジェクトルートとは
 
@@ -87,7 +98,7 @@ knowledge:
   * string型
   * 当該.knowledge.ymlから対象ファイルまでの相対パスを指定します
 
-### knowledgeスキャンとは
+## knowledgeスキャンとは
 
 * コンテキストスキャンを用いて各階層の`.knowledge.yml`を読み込むことです。
   * `.knowledge.yml`は省略可能なので、存在しない場合は無視され処理は継続します。
@@ -100,3 +111,22 @@ knowledge:
 
 * コードブロック開始の書式： \<!-- CODE_BLOCK_BEGIN -->```[Target Code Path]
 * コードブロック終了の書式： ```\<!-- CODE_BLOCK_END -->
+
+## フォルダ構造情報とは
+
+* treeコマンドの出力のようなフォルダ構造を表したテキストのこと
+* 隠しフォルダは出力されません
+* フォルダの名前には接頭辞`/`がつきます
+
+### フォルダ構造情報のサンプル
+
+```txt
+A
+  /B
+    a.txt
+  /C
+    b.go
+  /c.md
+D
+  d.yml
+```

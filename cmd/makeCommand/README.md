@@ -35,3 +35,5 @@ command make [path1], [path2]...
   * １回めのプロンプトはprompts/prompt.md.tmplを使って生成される
   * ２回め以降のプロンプトはprompts/oneMoreMake.md.tmplを使って生成される
 * knowledgeスキャンを行う
+* フォルダ構造情報について
+  * プロジェクトコンフィグの設定に応じてフォルダ構造情報をプロンプトに追加する

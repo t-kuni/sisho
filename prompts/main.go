@@ -10,9 +10,10 @@ import (
 var promptTmpl string
 
 type PromptParam struct {
-	Instructions  string
-	KnowledgeSets []KnowledgeSet
-	Targets       []Target
+	Instructions    string
+	KnowledgeSets   []KnowledgeSet
+	Targets         []Target
+	FolderStructure string
 }
 
 type Target struct {

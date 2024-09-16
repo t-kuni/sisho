@@ -80,10 +80,19 @@ func runMake(promptFlag *bool, applyFlag *bool) func(cmd *cobra.Command, args []
 
 			var prompt string
 			if i == 0 {
+				folderStructure := ""
+				if configHolder.Config.AdditionalKnowledge.FolderStructure {
+					folderStructure, err = getFolderStructure(configHolder.RootDir)
+					if err != nil {
+						return err
+					}
+				}
+
 				prompt, err = prompts.BuildPrompt(prompts.PromptParam{
-					KnowledgeSets: knowledgeSets,
-					Targets:       []prompts.Target{target},
-					Instructions:  instructions,
+					KnowledgeSets:   knowledgeSets,
+					Targets:         []prompts.Target{target},
+					Instructions:    instructions,
+					FolderStructure: folderStructure,
 				})
 			} else {
 				prompt, err = oneMoreMake.BuildPrompt(oneMoreMake.PromptParam{
@@ -213,7 +222,7 @@ func printKnowledgePaths(knowledgeSets []prompts.KnowledgeSet) {
 }
 
 func applyChanges(path string, answer string) error {
-	re := regexp.MustCompile("(?s)\n<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "\n(.*?)```<!-- CODE_BLOCK_END -->\n")
+	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "(\n|^)(.*?)```<!-- CODE_BLOCK_END -->(\n|$)")
 	matches := re.FindStringSubmatch(answer)
 
 	if len(matches) < 2 {
@@ -242,4 +251,38 @@ func applyChanges(path string, answer string) error {
 	}
 
 	return nil
+}
+
+func getFolderStructure(rootDir string) (string, error) {
+	var structure strings.Builder
+
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() && strings.HasPrefix(info.Name(), ".") {
+			return filepath.SkipDir
+		}
+
+		if !info.IsDir() && strings.HasPrefix(info.Name(), ".") {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(rootDir, path)
+		if err != nil {
+			return err
+		}
+
+		indent := strings.Repeat("  ", strings.Count(relPath, string(os.PathSeparator)))
+		structure.WriteString(fmt.Sprintf("%s%s\n", indent, info.Name()))
+
+		return nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	return structure.String(), nil
 }
