@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/segmentio/ksuid"
+	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/spf13/cobra"
 	"github.com/t-kuni/sisho/chat/claude"
 	"github.com/t-kuni/sisho/config"
@@ -13,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -23,23 +25,25 @@ type MakeCommand struct {
 
 func NewMakeCommand() *MakeCommand {
 	var promptFlag bool
+	var applyFlag bool
 
 	cmd := &cobra.Command{
 		Use:   "make [path...]",
 		Short: "Generate files using LLM",
 		Long:  `Generate files at the specified paths using LLM based on the knowledge sets.`,
 		Args:  cobra.MinimumNArgs(1),
-		RunE:  runMake(&promptFlag),
+		RunE:  runMake(&promptFlag, &applyFlag),
 	}
 
 	cmd.Flags().BoolVarP(&promptFlag, "prompt", "p", false, "Open editor for additional instructions")
+	cmd.Flags().BoolVarP(&applyFlag, "apply", "a", false, "Apply LLM output to files")
 
 	return &MakeCommand{
 		CobraCommand: cmd,
 	}
 }
 
-func runMake(promptFlag *bool) func(cmd *cobra.Command, args []string) error {
+func runMake(promptFlag *bool, applyFlag *bool) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		configHolder, err := config.ReadConfig()
 		if err != nil {
@@ -101,6 +105,13 @@ func runMake(promptFlag *bool) func(cmd *cobra.Command, args []string) error {
 			}
 
 			fmt.Println(answer)
+
+			if *applyFlag {
+				err = applyChanges(path, answer)
+				if err != nil {
+					return err
+				}
+			}
 		}
 
 		return nil
@@ -198,4 +209,37 @@ func printKnowledgePaths(knowledgeSets []prompts.KnowledgeSet) {
 		}
 	}
 	fmt.Println("")
+}
+
+func applyChanges(path string, answer string) error {
+	re := regexp.MustCompile("(?s)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "\n(.*?)```<!-- CODE_BLOCK_END -->")
+	matches := re.FindStringSubmatch(answer)
+
+	if len(matches) < 2 {
+		return fmt.Errorf("no code block found for %s", path)
+	}
+
+	newContent := strings.TrimSpace(matches[1])
+
+	oldContent, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	if string(oldContent) != newContent {
+		dmp := diffmatchpatch.New()
+		diffs := dmp.DiffMain(string(oldContent), newContent, false)
+		fmt.Printf("Changes for %s:\n", path)
+		fmt.Println(dmp.DiffPrettyText(diffs))
+
+		err = os.WriteFile(path, []byte(newContent), 0644)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Applied changes to %s\n", path)
+	} else {
+		fmt.Printf("No changes needed for %s\n", path)
+	}
+
+	return nil
 }

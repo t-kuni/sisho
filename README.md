@@ -89,3 +89,10 @@ knowledge:
   * `.knowledge.yml`は省略可能なので、存在しない場合は無視され処理は継続します。
   * `.knowledge.yml`で指定したファイルが重複する場合は１つにまとめられます。
   * Target Codeが複数指定された場合、全てのTarget CodeについてKnowledgeスキャンを行います
+
+## Capturable Code Block とは
+
+以下の書式に従うコードブロックを指します。
+
+* コードブロック開始の書式： \<!-- CODE_BLOCK_BEGIN -->```[Target Code Path]
+* コードブロック終了の書式： ```\<!-- CODE_BLOCK_END -->
