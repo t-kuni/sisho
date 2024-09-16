@@ -2,8 +2,8 @@ package oneMoreMake
 
 import (
 	_ "embed"
-	"html/template"
 	"strings"
+	"text/template"
 )
 
 //go:embed prompt.md.tmpl
