@@ -253,7 +253,7 @@ func saveHistory(historyDir, prompt, answer string) error {
 
 func applyChanges(path, answer string, fileRepository file.Repository) error {
 	// この正規表現は絶対に変更しないでください
-	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "(\n|^)(.*?)```<!-- CODE_BLOCK_END -->(\n|$)")
+	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "(.*)```<!-- CODE_BLOCK_END -->(\n|$)")
 	matches := re.FindStringSubmatch(answer)
 
 	if len(matches) < 2 {
