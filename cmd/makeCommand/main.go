@@ -7,7 +7,7 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/spf13/cobra"
 	"github.com/t-kuni/sisho/domain/external/claude"
-	"github.com/t-kuni/sisho/domain/model/chat/openAi"
+	modelClaude "github.com/t-kuni/sisho/domain/model/chat/claude"
 	"github.com/t-kuni/sisho/domain/repository/config"
 	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
@@ -101,8 +101,8 @@ func runMake(
 
 		printKnowledgePaths(knowledgeSets)
 
-		//chat := modelClaude.NewClaudeChat(claudeClient)
-		chat := openAi.OpenAiChat{}
+		chat := modelClaude.NewClaudeChat(claudeClient)
+		//chat := openAi.OpenAiChat{}
 
 		historyDir, err := createHistoryDir(rootDir)
 		if err != nil {
