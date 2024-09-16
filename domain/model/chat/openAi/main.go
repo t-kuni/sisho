@@ -52,7 +52,7 @@ func (c *OpenAiChat) Send(prompt string) (string, error) {
 	})
 
 	requestBody := OpenAiRequest{
-		Model:    "gpt-4o",
+		Model:    "chatgpt-4o-latest",
 		Messages: c.history, // 履歴全体をリクエストに含める
 		Stream:   true,      // ストリーミングを有効にする
 	}
