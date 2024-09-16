@@ -225,11 +225,11 @@ func applyChanges(path string, answer string) error {
 	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "(\n|^)(.*?)```<!-- CODE_BLOCK_END -->(\n|$)")
 	matches := re.FindStringSubmatch(answer)
 
-	if len(matches) < 2 {
+	if len(matches) < 5 {
 		return fmt.Errorf("no code block found for %s", path)
 	}
 
-	newContent := strings.TrimSpace(matches[1])
+	newContent := strings.TrimSpace(matches[3])
 
 	oldContent, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
