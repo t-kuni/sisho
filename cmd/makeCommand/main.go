@@ -275,7 +275,11 @@ func getFolderStructure(rootDir string) (string, error) {
 		}
 
 		indent := strings.Repeat("  ", strings.Count(relPath, string(os.PathSeparator)))
-		structure.WriteString(fmt.Sprintf("%s%s\n", indent, info.Name()))
+		if info.IsDir() {
+			structure.WriteString(fmt.Sprintf("%s/%s\n", indent, info.Name()))
+		} else {
+			structure.WriteString(fmt.Sprintf("%s%s\n", indent, info.Name()))
+		}
 
 		return nil
 	})
