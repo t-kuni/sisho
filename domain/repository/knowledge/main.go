@@ -10,7 +10,7 @@ type Knowledge struct {
 }
 
 type KnowledgeFile struct {
-	KnowledgeList []Knowledge
+	KnowledgeList []Knowledge `yaml:"knowledge"`
 }
 
 type Repository interface {

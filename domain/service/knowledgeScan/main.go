@@ -61,11 +61,7 @@ func (s *KnowledgeScanService) scanKnowledgeYml(rootDir string, targetPath strin
 		knowledgeFile, err := s.knowledgeRepo.Read(knowledgeFilePath)
 		if err == nil {
 			for _, k := range knowledgeFile.KnowledgeList {
-				relPath, err := filepath.Rel(rootDir, filepath.Join(currentDir, k.Path))
-				if err != nil {
-					return nil, err
-				}
-				k.Path = relPath
+				k.Path = filepath.Clean(filepath.Join(currentDir, k.Path))
 				knowledgeList = append(knowledgeList, k)
 			}
 		}
