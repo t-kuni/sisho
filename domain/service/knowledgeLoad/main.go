@@ -1,8 +1,8 @@
 package knowledgeLoad
 
 import (
+	"github.com/t-kuni/sisho/domain/model/prompts"
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
-	"github.com/t-kuni/sisho/prompts"
 	"os"
 	"path/filepath"
 )

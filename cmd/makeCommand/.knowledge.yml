@@ -1,9 +1,9 @@
 knowledge:
-  - path: ../../prompts/prompt.md.tmpl
+  - path: ../../domain/model/prompts/prompt.md.tmpl
     kind: implementations
-  - path: ../../prompts/oneMoreMake/main.go
+  - path: ../../domain/model/prompts/oneMoreMake/main.go
     kind: implementations
-  - path: ../../prompts/oneMoreMake/prompt.md.tmpl
+  - path: ../../domain/model/prompts/oneMoreMake/prompt.md.tmpl
     kind: implementations
   - path: ../../domain/model/chat/main.go
     kind: implementations
