@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/t-kuni/sisho/domain/model/kinds"
-	"github.com/t-kuni/sisho/knowledge"
+	"github.com/t-kuni/sisho/domain/repository/knowledge"
 	"os"
 	"path/filepath"
 )
@@ -13,7 +13,7 @@ type AddCommand struct {
 	CobraCommand *cobra.Command
 }
 
-func NewAddCommand() *AddCommand {
+func NewAddCommand(knowledgeRepo knowledge.Repository) *AddCommand {
 	cmd := &cobra.Command{
 		Use:   "add [kind] [path]",
 		Short: "Add a file to .knowledge.yml",
@@ -34,12 +34,12 @@ func NewAddCommand() *AddCommand {
 			}
 
 			// Read existing knowledge or create new
-			f, err := knowledge.ReadKnowledge(".knowledge.yml")
+			knowledgeFile, err := knowledgeRepo.Read(".knowledge.yml")
 			if err != nil && !os.IsNotExist(err) {
 				return err
 			}
 
-			knowList := f.KnowledgeList
+			knowList := knowledgeFile.KnowledgeList
 
 			// Add new knowledge
 			relPath, err := filepath.Rel(".", path)
@@ -48,12 +48,12 @@ func NewAddCommand() *AddCommand {
 			}
 			newKnowledge := knowledge.Knowledge{
 				Path: relPath,
-				Kind: string(kindName),
+				Kind: kindName,
 			}
 			knowList = append(knowList, newKnowledge)
 
 			// Write updated knowledge
-			err = knowledge.WriteKnowledge(".knowledge.yml", knowledge.KnowledgeFile{KnowledgeList: knowList})
+			err = knowledgeRepo.Write(".knowledge.yml", knowledge.KnowledgeFile{KnowledgeList: knowList})
 			if err != nil {
 				return err
 			}

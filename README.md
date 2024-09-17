@@ -35,6 +35,10 @@ go run main.go make [target path]
 * /domain 配下にドメインモデルやビジネスロジック、infrastructure層とのインターフェースを定義する
 * /infrastructure 配下に外部との通信やファイルへのアクセスなどのI/O処理を定義する
 
+## エントリーポイント
+
+当該ソフトウェアのエントリーポイントは /main.go です。
+
 ## プロジェクトコンフィグについて
 
 * `sisho.yml`のこと

@@ -3,5 +3,3 @@ knowledge:
       kind: dependencies
     - path: domain/model/kinds/main.go
       kind: implementations
-    - path: knowledge/main.go
-      kind: implementations

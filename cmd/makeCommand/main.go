@@ -16,7 +16,8 @@ import (
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
-	"github.com/t-kuni/sisho/knowledge"
+	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
+	"github.com/t-kuni/sisho/domain/service/knowledgeScan"
 	"github.com/t-kuni/sisho/prompts"
 	"github.com/t-kuni/sisho/prompts/oneMoreMake"
 	"os"
@@ -41,6 +42,8 @@ func NewMakeCommand(
 	fileRepository file.Repository,
 	autoCollectService *autoCollect.AutoCollectService,
 	contextScanService *contextScan.ContextScanService,
+	knowledgeScanService *knowledgeScan.KnowledgeScanService,
+	knowledgeLoadService *knowledgeLoad.KnowledgeLoadService,
 ) *MakeCommand {
 	var promptFlag bool
 	var applyFlag bool
@@ -51,7 +54,7 @@ func NewMakeCommand(
 		Long:  `Generate files at the specified paths using LLM based on the knowledge sets.`,
 		Args:  cobra.MinimumNArgs(1),
 		RunE: runMake(&promptFlag, &applyFlag, claudeClient, openAiClient, configFindService, configRepository,
-			fileRepository, autoCollectService, contextScanService),
+			fileRepository, autoCollectService, contextScanService, knowledgeScanService, knowledgeLoadService),
 	}
 
 	cmd.Flags().BoolVarP(&promptFlag, "prompt", "p", false, "Open editor for additional instructions")
@@ -74,6 +77,8 @@ func runMake(
 	fileRepository file.Repository,
 	autoCollectService *autoCollect.AutoCollectService,
 	contextScanService *contextScan.ContextScanService,
+	knowledgeScanService *knowledgeScan.KnowledgeScanService,
+	knowledgeLoadService *knowledgeLoad.KnowledgeLoadService,
 ) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		configPath, err := configFindService.FindConfig()
@@ -88,12 +93,12 @@ func runMake(
 
 		rootDir := configFindService.GetProjectRoot(configPath)
 
-		scannedKnowledge, err := knowledge.ScanKnowledge(rootDir, args, autoCollectService)
+		scannedKnowledge, err := knowledgeScanService.ScanKnowledge(rootDir, args)
 		if err != nil {
 			return err
 		}
 
-		knowledgeSets, err := knowledge.ConvertToKnowledgeSet(rootDir, scannedKnowledge)
+		knowledgeSets, err := knowledgeLoadService.LoadKnowledge(rootDir, scannedKnowledge)
 		if err != nil {
 			return err
 		}
@@ -118,6 +123,8 @@ func runMake(
 		default:
 			return fmt.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
 		}
+
+		fmt.Printf("Using LLM: %s with model: %s\n", cfg.LLM.Driver, cfg.LLM.Model)
 
 		historyDir, err := createHistoryDir(rootDir)
 		if err != nil {

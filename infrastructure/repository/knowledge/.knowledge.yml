@@ -1,0 +1,5 @@
+knowledge:
+  - path: ../../../domain/repository/knowledge/main.go
+    kind: implementations
+  - path: ../../../domain/repository/knowledge/README.md
+    kind: specifications

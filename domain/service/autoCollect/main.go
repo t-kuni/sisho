@@ -2,21 +2,18 @@ package autoCollect
 
 import (
 	"github.com/t-kuni/sisho/domain/repository/config"
-	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"path/filepath"
 )
 
 type AutoCollectService struct {
 	configRepository   config.Repository
-	fileRepository     file.Repository
 	contextScanService *contextScan.ContextScanService
 }
 
-func NewAutoCollectService(configRepository config.Repository, fileRepository file.Repository, contextScanService *contextScan.ContextScanService) *AutoCollectService {
+func NewAutoCollectService(configRepository config.Repository, contextScanService *contextScan.ContextScanService) *AutoCollectService {
 	return &AutoCollectService{
 		configRepository:   configRepository,
-		fileRepository:     fileRepository,
 		contextScanService: contextScanService,
 	}
 }

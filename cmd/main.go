@@ -8,10 +8,13 @@ import (
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
+	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
+	"github.com/t-kuni/sisho/domain/service/knowledgeScan"
 	"github.com/t-kuni/sisho/infrastructure/external/claude"
 	"github.com/t-kuni/sisho/infrastructure/external/openAi"
-	configRepo "github.com/t-kuni/sisho/infrastructure/repository/config"
-	fileRepo "github.com/t-kuni/sisho/infrastructure/repository/file"
+	"github.com/t-kuni/sisho/infrastructure/repository/config"
+	"github.com/t-kuni/sisho/infrastructure/repository/file"
+	"github.com/t-kuni/sisho/infrastructure/repository/knowledge"
 )
 
 type RootCommand struct {
@@ -21,8 +24,8 @@ type RootCommand struct {
 func NewRootCommand() *RootCommand {
 	cmd := &cobra.Command{
 		Use:   "sisho",
-		Short: "A tool for scaffolding using LLM",
-		Long:  `Sisho is a command-line tool for scaffolding projects using Large Language Models (LLM).`,
+		Short: "Sisho is a CLI tool for generating code using LLM",
+		Long:  `A CLI tool that uses LLM to generate code based on knowledge sets and project structure.`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return nil
 		},
@@ -31,25 +34,35 @@ func NewRootCommand() *RootCommand {
 		},
 	}
 
+	fileRepo := file.NewFileRepository()
+	configRepo := config.NewConfigRepository()
+	knowledgeRepo := knowledge.NewRepository()
+	configFindSvc := configFindService.NewConfigFindService(fileRepo)
+	contextScanSvc := contextScan.NewContextScanService(fileRepo)
+	autoCollectSvc := autoCollect.NewAutoCollectService(configRepo, contextScanSvc)
+	knowledgeScanSvc := knowledgeScan.NewKnowledgeScanService(knowledgeRepo, autoCollectSvc)
+	knowledgeLoadSvc := knowledgeLoad.NewKnowledgeLoadService(knowledgeRepo)
+
 	claudeClient := claude.NewClaudeClient()
 	openAiClient := openAi.NewOpenAIClient()
-	fileRepository := fileRepo.NewFileRepository()
-	configRepository := configRepo.NewConfigRepository()
-	configFindSrv := configFindService.NewConfigFindService(fileRepository)
-	contextScanSrv := contextScan.NewContextScanService(fileRepository)
-	autoCollectSrv := autoCollect.NewAutoCollectService(configRepository, fileRepository, contextScanSrv)
 
-	cmd.AddCommand(initCommand.NewInitCommand(configRepository).CobraCommand)
-	cmd.AddCommand(makeCommand.NewMakeCommand(
+	initCmd := initCommand.NewInitCommand(configRepo)
+	addCmd := addCommand.NewAddCommand(knowledgeRepo)
+	makeCmd := makeCommand.NewMakeCommand(
 		claudeClient,
 		openAiClient,
-		configFindSrv,
-		configRepository,
-		fileRepository,
-		autoCollectSrv,
-		contextScanSrv,
-	).CobraCommand)
-	cmd.AddCommand(addCommand.NewAddCommand().CobraCommand)
+		configFindSvc,
+		configRepo,
+		fileRepo,
+		autoCollectSvc,
+		contextScanSvc,
+		knowledgeScanSvc,
+		knowledgeLoadSvc,
+	)
+
+	cmd.AddCommand(initCmd.CobraCommand)
+	cmd.AddCommand(addCmd.CobraCommand)
+	cmd.AddCommand(makeCmd.CobraCommand)
 
 	return &RootCommand{
 		CobraCommand: cmd,
