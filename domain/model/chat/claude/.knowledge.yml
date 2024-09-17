@@ -1,0 +1,3 @@
+knowledge:
+  - path: ../../../external/claude/main.go
+    kind: implementations

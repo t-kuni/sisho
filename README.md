@@ -43,12 +43,24 @@ go run main.go make [target path]
 
 ```yaml
 lang: ja
+llm:
+  driver: open-ai
+  model: gpt-4o
 auto-collect:
   README.md: true
   "[TARGET_CODE].md": true
 additional-knowledge:
   folder-structure: true
 ```
+
+### llmについて
+
+* driver
+  * `open-ai` を指定した場合、OpenAIのAPIを利用する
+  * `anthropic` を指定した場合、AnthropicのAPIを利用する
+* model
+  * string型
+  * 各種サービスのモデル名に準拠
 
 ### auto-collectについて
 

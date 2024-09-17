@@ -9,6 +9,7 @@ import (
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"github.com/t-kuni/sisho/infrastructure/external/claude"
+	"github.com/t-kuni/sisho/infrastructure/external/openAi"
 	configRepo "github.com/t-kuni/sisho/infrastructure/repository/config"
 	fileRepo "github.com/t-kuni/sisho/infrastructure/repository/file"
 )
@@ -31,6 +32,7 @@ func NewRootCommand() *RootCommand {
 	}
 
 	claudeClient := claude.NewClaudeClient()
+	openAiClient := openAi.NewOpenAIClient()
 	fileRepository := fileRepo.NewFileRepository()
 	configRepository := configRepo.NewConfigRepository()
 	configFindSrv := configFindService.NewConfigFindService(fileRepository)
@@ -40,6 +42,7 @@ func NewRootCommand() *RootCommand {
 	cmd.AddCommand(initCommand.NewInitCommand(configRepository).CobraCommand)
 	cmd.AddCommand(makeCommand.NewMakeCommand(
 		claudeClient,
+		openAiClient,
 		configFindSrv,
 		configRepository,
 		fileRepository,

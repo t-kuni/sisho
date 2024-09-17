@@ -7,7 +7,10 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/spf13/cobra"
 	"github.com/t-kuni/sisho/domain/external/claude"
+	"github.com/t-kuni/sisho/domain/external/openAi"
+	chat2 "github.com/t-kuni/sisho/domain/model/chat"
 	modelClaude "github.com/t-kuni/sisho/domain/model/chat/claude"
+	modelOpenAi "github.com/t-kuni/sisho/domain/model/chat/openAi"
 	"github.com/t-kuni/sisho/domain/repository/config"
 	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
@@ -27,10 +30,12 @@ import (
 type MakeCommand struct {
 	CobraCommand *cobra.Command
 	claudeClient claude.Client
+	openAiClient openAi.Client
 }
 
 func NewMakeCommand(
 	claudeClient claude.Client,
+	openAiClient openAi.Client,
 	configFindService *configFindService.ConfigFindService,
 	configRepository config.Repository,
 	fileRepository file.Repository,
@@ -45,7 +50,7 @@ func NewMakeCommand(
 		Short: "Generate files using LLM",
 		Long:  `Generate files at the specified paths using LLM based on the knowledge sets.`,
 		Args:  cobra.MinimumNArgs(1),
-		RunE: runMake(&promptFlag, &applyFlag, claudeClient, configFindService, configRepository,
+		RunE: runMake(&promptFlag, &applyFlag, claudeClient, openAiClient, configFindService, configRepository,
 			fileRepository, autoCollectService, contextScanService),
 	}
 
@@ -55,6 +60,7 @@ func NewMakeCommand(
 	return &MakeCommand{
 		CobraCommand: cmd,
 		claudeClient: claudeClient,
+		openAiClient: openAiClient,
 	}
 }
 
@@ -62,6 +68,7 @@ func runMake(
 	promptFlag *bool,
 	applyFlag *bool,
 	claudeClient claude.Client,
+	openAiClient openAi.Client,
 	configFindService *configFindService.ConfigFindService,
 	configRepository config.Repository,
 	fileRepository file.Repository,
@@ -101,8 +108,16 @@ func runMake(
 
 		printKnowledgePaths(knowledgeSets)
 
-		chat := modelClaude.NewClaudeChat(claudeClient)
-		//chat := openAi.OpenAiChat{}
+		var chat chat2.Chat
+
+		switch cfg.LLM.Driver {
+		case "open-ai":
+			chat = modelOpenAi.NewOpenAiChat(openAiClient)
+		case "anthropic":
+			chat = modelClaude.NewClaudeChat(claudeClient)
+		default:
+			return fmt.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
+		}
 
 		historyDir, err := createHistoryDir(rootDir)
 		if err != nil {
@@ -140,7 +155,7 @@ func runMake(
 				return err
 			}
 
-			answer, err := chat.Send(prompt)
+			answer, err := chat.Send(prompt, cfg.LLM.Model)
 			if err != nil {
 				return err
 			}
@@ -254,7 +269,8 @@ func saveHistory(historyDir, prompt, answer string) error {
 
 func applyChanges(path, answer string, fileRepository file.Repository) error {
 	// この正規表現は絶対に変更しないでください
-	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "(.*)```<!-- CODE_BLOCK_END -->(\n|$)")
+	// gpt-4だとコードブロックの終了からコメントの間に1文字入ることがある
+	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "(.*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
 	matches := re.FindStringSubmatch(answer)
 
 	if len(matches) < 4 {

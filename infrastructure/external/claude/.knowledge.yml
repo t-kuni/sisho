@@ -1,0 +1,5 @@
+knowledge:
+  - path: ../../../domain/external/claude/README.md
+    kind: specifications
+  - path: ../../../domain/external/claude/main.go
+    kind: implementations

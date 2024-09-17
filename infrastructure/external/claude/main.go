@@ -24,11 +24,11 @@ func NewClaudeClient() *ClaudeClient {
 	return &ClaudeClient{apiKey: apiKey}
 }
 
-func (c *ClaudeClient) SendMessage(messages []claude.Message) (string, error) {
+func (c *ClaudeClient) SendMessage(messages []claude.Message, model string) (string, error) {
 	client := resty.New()
 
 	requestBody := ClaudeRequest{
-		Model:     "claude-3-5-sonnet-20240620",
+		Model:     model,
 		MaxTokens: 8192,
 		Messages:  convertMessages(messages),
 		Stream:    true,

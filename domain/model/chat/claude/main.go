@@ -1,53 +1,44 @@
 package claude
 
 import (
-	externalClaude "github.com/t-kuni/sisho/domain/external/claude"
+	"github.com/t-kuni/sisho/domain/external/claude"
+	"github.com/t-kuni/sisho/domain/model/chat"
 )
 
 type ClaudeChat struct {
-	history []Message
-	client  externalClaude.Client
+	client  claude.Client
+	history []chat.Message
 }
 
-func NewClaudeChat(client externalClaude.Client) *ClaudeChat {
+func NewClaudeChat(client claude.Client) *ClaudeChat {
 	return &ClaudeChat{
-		history: []Message{},
 		client:  client,
+		history: []chat.Message{},
 	}
 }
 
-func (c *ClaudeChat) addToHistory(m Message) {
-	c.history = append(c.history, m)
-}
+func (c *ClaudeChat) Send(prompt string, model string) (string, error) {
+	// Add user message to history
+	c.history = append(c.history, chat.Message{Role: "user", Content: prompt})
 
-type Message struct {
-	Role    string
-	Content string
-}
-
-func (c *ClaudeChat) Send(prompt string) (string, error) {
-	c.addToHistory(Message{
-		Role:    "user",
-		Content: prompt,
-	})
-
-	messages := make([]externalClaude.Message, len(c.history))
+	// Convert history to Claude messages
+	claudeMessages := make([]claude.Message, len(c.history))
 	for i, msg := range c.history {
-		messages[i] = externalClaude.Message{
-			Role:    msg.Role,
-			Content: msg.Content,
-		}
+		claudeMessages[i] = claude.Message{Role: msg.Role, Content: msg.Content}
 	}
 
-	responseText, err := c.client.SendMessage(messages)
+	// Send message to Claude API
+	response, err := c.client.SendMessage(claudeMessages, model)
 	if err != nil {
 		return "", err
 	}
 
-	c.addToHistory(Message{
-		Role:    "assistant",
-		Content: responseText,
-	})
+	// Add assistant response to history
+	c.history = append(c.history, chat.Message{Role: "assistant", Content: response})
 
-	return responseText, nil
+	return response, nil
+}
+
+func (c *ClaudeChat) GetHistory() []chat.Message {
+	return c.history
 }

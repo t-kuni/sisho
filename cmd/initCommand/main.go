@@ -30,6 +30,10 @@ func NewInitCommand(configRepository config.Repository) *InitCommand {
 
 			cfg := &config.Config{
 				Lang: "en",
+				LLM: config.LLM{
+					Driver: "anthropic",
+					Model:  "claude-3-5-sonnet-20240620",
+				},
 				AutoCollect: config.AutoCollect{
 					ReadmeMd:     true,
 					TargetCodeMd: true,

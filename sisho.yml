@@ -1,4 +1,10 @@
 lang: ja
+llm:
+  driver: open-ai
+  model: gpt-4
+#llm:
+#  driver: anthropic
+#  model: claude-3-5-sonnet-20240620
 auto-collect:
   README.md: true
   "[TARGET_CODE].md": true

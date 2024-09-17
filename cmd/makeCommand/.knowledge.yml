@@ -5,11 +5,15 @@ knowledge:
     kind: implementations
   - path: ../../prompts/oneMoreMake/prompt.md.tmpl
     kind: implementations
+  - path: ../../domain/model/chat/main.go
+    kind: implementations
   - path: ../../domain/model/chat/claude/main.go
     kind: implementations
   - path: ../../domain/external/claude/main.go
     kind: implementations
-  - path: ../../infrastructure/external/claude/main.go
+  - path: ../../domain/model/chat/openAi/main.go
+    kind: implementations
+  - path: ../../domain/external/openAi/main.go
     kind: implementations
   - path: ../../domain/repository/config/main.go
     kind: implementations

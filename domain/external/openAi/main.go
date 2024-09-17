@@ -1,25 +1,26 @@
-package claude
+package openAi
 
-// Client はClaude APIとの通信を抽象化するインターフェースです。
+// Client はOpenAI APIとの通信を抽象化するインターフェースです。
 type Client interface {
 	// SendMessage はメッセージを送信し、応答を返します。
 	// モデルのバリデーションは行いません。
 	SendMessage(messages []Message, model string) (string, error)
 }
 
-// Message はClaude APIに送信するメッセージの構造を表します。
+// Message はOpenAI APIに送信するメッセージの構造を表します。
 type Message struct {
 	Role    string
 	Content string
 }
 
-// ModelName はClaude APIで使用可能なモデル名を定義する型です。
+// ModelName はOpenAI APIで使用可能なモデル名を定義する型です。
 type ModelName string
 
 const (
-	ModelClaude3Opus   ModelName = "claude-3-opus-20240229"
-	ModelClaude3Sonnet ModelName = "claude-3-sonnet-20240229"
-	ModelClaude3Haiku  ModelName = "claude-3-haiku-20240307"
+	ModelGPT4          ModelName = "gpt-4"
+	ModelGPT4Turbo     ModelName = "gpt-4-turbo-preview"
+	ModelGPT35Turbo    ModelName = "gpt-3.5-turbo"
+	ModelGPT35Turbo16K ModelName = "gpt-3.5-turbo-16k"
 )
 
 // NewMessage は新しいMessageインスタンスを作成します。
@@ -33,9 +34,10 @@ func NewMessage(role, content string) Message {
 // GetAvailableModels は利用可能なすべてのモデル名を返します。
 func GetAvailableModels() []ModelName {
 	return []ModelName{
-		ModelClaude3Opus,
-		ModelClaude3Sonnet,
-		ModelClaude3Haiku,
+		ModelGPT4,
+		ModelGPT4Turbo,
+		ModelGPT35Turbo,
+		ModelGPT35Turbo16K,
 	}
 }
 
