@@ -22,12 +22,21 @@ func (s *KnowledgeScanService) ScanKnowledge(rootDir string, targetPaths []strin
 	uniqueKnowledge := make(map[string]knowledge.Knowledge)
 
 	for _, targetPath := range targetPaths {
-		// .knowledge.ymlファイルのスキャン
+		// レイヤー知識リストファイル（.knowledge.yml）のスキャン
 		knowledgeFromYml, err := s.scanKnowledgeYml(rootDir, targetPath)
 		if err != nil {
 			return nil, err
 		}
 		for _, k := range knowledgeFromYml {
+			uniqueKnowledge[k.Path] = k
+		}
+
+		// 単一ファイル知識リストファイル（[ファイル名].know.yml）のスキャン
+		knowledgeFromKnowYml, err := s.scanKnowledgeKnowYml(rootDir, targetPath)
+		if err != nil {
+			return nil, err
+		}
+		for _, k := range knowledgeFromKnowYml {
 			uniqueKnowledge[k.Path] = k
 		}
 
@@ -70,6 +79,24 @@ func (s *KnowledgeScanService) scanKnowledgeYml(rootDir string, targetPath strin
 			break
 		}
 		currentDir = filepath.Dir(currentDir)
+	}
+
+	return knowledgeList, nil
+}
+
+func (s *KnowledgeScanService) scanKnowledgeKnowYml(rootDir string, targetPath string) ([]knowledge.Knowledge, error) {
+	var knowledgeList []knowledge.Knowledge
+
+	fileName := filepath.Base(targetPath)
+	fileNameWithoutExt := fileName[:len(fileName)-len(filepath.Ext(fileName))]
+	knowYmlPath := filepath.Join(filepath.Dir(targetPath), fileNameWithoutExt+".know.yml")
+
+	knowledgeFile, err := s.knowledgeRepo.Read(knowYmlPath)
+	if err == nil {
+		for _, k := range knowledgeFile.KnowledgeList {
+			k.Path = filepath.Clean(filepath.Join(filepath.Dir(targetPath), k.Path))
+			knowledgeList = append(knowledgeList, k)
+		}
 	}
 
 	return knowledgeList, nil

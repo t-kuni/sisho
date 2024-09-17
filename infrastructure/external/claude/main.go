@@ -48,7 +48,8 @@ func (c *ClaudeClient) SendMessage(messages []claude.Message, model string) (str
 		Post("https://api.anthropic.com/v1/messages")
 
 	if err != nil {
-		return "", err
+		b, _ := io.ReadAll(resp.RawBody())
+		return "", fmt.Errorf("%w : %s", err, string(b))
 	}
 	defer resp.RawBody().Close()
 
