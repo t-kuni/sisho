@@ -1,5 +1,7 @@
 lang: [EN](README.markdown) | [JA](README.ja.markdown)
 
+![Frame 5](https://github.com/user-attachments/assets/94a975ec-4e90-49fe-81b7-c1d358f76a77)
+
 Sisho is a LLM powered knowledge-driven code generation framework.
 
 # Install
