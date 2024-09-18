@@ -1,33 +1,3 @@
-# LLMでスキャフォルドするツール
-
-```
-# Install
-go install github.com/t-kuni/sisho
-
-# Initialize project
-sisho init
-
-# Add knowledge to generate code
-# Syntax: sisho add [kind] [path]
-# Example:
-sisho add specifications swagger.yml
-sisho add specifications er.mmd
-sisho add examples handlers/getUser.go
-sisho add implementations handlers/getUser.go
-sisho add dependencies go.mod
-
-# Code generation
-# Syntax: sisho make [target path1] [target path2] ... 
-export ANTHROPIC_API_KEY="xxxx"
-sisho make handlers/postUser.go
-```
-
-## Development
-
-```
-go run main.go make [target path]
-```
-
 ## Software Architecture
 
 * /cmd/main.go でサブコマンドの初期化、依存モジュールの初期化とDIを行う
