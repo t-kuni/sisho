@@ -1,0 +1,11 @@
+knowledge:
+  - path: ../../domain/model/prompts/extract/prompt.md.tmpl
+    kind: implementations
+  - path: ../../domain/model/prompts/extract/main.go
+    kind: implementations
+  - path: ../../domain/repository/knowledge/main.go
+    kind: implementations
+  - path: ../../domain/repository/config/main.go
+    kind: implementations
+  - path: ../../domain/model/chat/main.go
+    kind: implementations

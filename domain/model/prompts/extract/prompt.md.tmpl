@@ -1,0 +1,55 @@
+# Target Code
+
+* 知識リストを抽出する対象のコードです。
+
+```{{ .Target.Path }}
+{{ .Target.Content }}
+```
+
+# Folder Structure
+
+* 参照可能な知識の一覧です。
+
+```
+{{ .FolderStructure }}
+```
+
+# Capturable Code Block とは
+
+以下の書式に従うコードブロックを指します。
+
+* コードブロック開始の書式： \<!-- CODE_BLOCK_BEGIN -->```[Target Code Path]
+* コードブロック終了の書式： ```\<!-- CODE_BLOCK_END -->
+* [Target Code Path]はTarget Codeのパス（プロジェクトルートからの相対パス）を指します
+
+# 知識リストファイルのサンプル
+
+```yaml
+knowledge:
+    - path: controllers/UserController.php
+      kind: examples
+    - path: models/User.php
+      kind: implementations
+    - path: controllers/README.md
+      kind: specifications
+```
+
+* path
+    * 対象ファイルまのパスを指定します
+* kind
+    * 指定可能な値とその意味
+        * examples : コード例です。これを参考にして実装を進めてください。
+        * implementations : 利用可能な実装です。必要に応じて利用してください。
+        * specifications : この仕様を満たすように実装してください。
+
+# {{ .KnowledgeListPath }}
+
+* Target Codeを修正する際に参照するべき知識を集めた知識リストです。
+* 以下のファイルは除外してください。
+    * sisho.yml
+    * .knowledge.yml
+    * *.know.yml
+* コードブロックは Capturable Code Block に従って記載します。
+    * `[Target Code Path]` には `{{ .KnowledgeListPath }}` を記載します。
+* コードブロックにはファイル全体を記載します。
+

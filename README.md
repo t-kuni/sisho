@@ -140,6 +140,13 @@ knowledge:
 
 * コードブロック開始の書式： \<!-- CODE_BLOCK_BEGIN -->```[Target Code Path]
 * コードブロック終了の書式： ```\<!-- CODE_BLOCK_END -->
+* [Target Code Path]はTarget Codeのパス（プロジェクトルートからの相対パス）を指します
+
+### Capturable Code Blockの本文を切り出す正規表現
+
+```go
+re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "(.*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
+```
 
 ## フォルダ構造情報とは
 

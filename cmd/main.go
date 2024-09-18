@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/t-kuni/sisho/cmd/addCommand"
+	"github.com/t-kuni/sisho/cmd/extractCommand"
 	"github.com/t-kuni/sisho/cmd/initCommand"
 	"github.com/t-kuni/sisho/cmd/makeCommand"
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
@@ -59,10 +60,19 @@ func NewRootCommand() *RootCommand {
 		knowledgeScanSvc,
 		knowledgeLoadSvc,
 	)
+	extractCmd := extractCommand.NewExtractCommand(
+		claudeClient,
+		openAiClient,
+		configFindSvc,
+		configRepo,
+		fileRepo,
+		knowledgeRepo,
+	)
 
 	cmd.AddCommand(initCmd.CobraCommand)
 	cmd.AddCommand(addCmd.CobraCommand)
 	cmd.AddCommand(makeCmd.CobraCommand)
+	cmd.AddCommand(extractCmd.CobraCommand)
 
 	return &RootCommand{
 		CobraCommand: cmd,

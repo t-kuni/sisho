@@ -1,0 +1,7 @@
+knowledge:
+    - path: ../../domain/repository/config/main.go
+      kind: implementations
+    - path: ../../infrastructure/repository/config/main.go
+      kind: implementations
+    - path: ../../domain/model/kinds/main.go
+      kind: specifications

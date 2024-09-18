@@ -32,8 +32,8 @@ command make [path1], [path2]...
     * `answer.md` : promptに対する回答
 * プロンプトについて
   * 指定したTarget Code１つにつき、LLMとのやり取りの往復が１回発生する
-  * １回めのプロンプトはprompts/prompt.md.tmplを使って生成される
-  * ２回め以降のプロンプトはprompts/oneMoreMake.md.tmplを使って生成される
+  * １回めのプロンプトはdomain/model/prompts/prompt.md.tmplを使って生成される
+  * ２回め以降のプロンプトはdomain/model/prompts/oneMoreMake.md.tmplを使って生成される
 * knowledgeスキャンを用いてレイヤー知識リストファイル（`.knowledge.yml`）を読み込む
 * Target Codeに対する単一ファイル知識リストファイル（`[ファイル名(拡張子除く)].know.yml`）を読み込む
 * フォルダ構造情報について
