@@ -3,10 +3,10 @@ lang: ja
 #  driver: open-ai
 #  model: gpt-4-turbo
 llm:
-  driver: anthropic
-  model: claude-3-5-sonnet-20240620
+    driver: anthropic
+    model: claude-3-5-sonnet-20240620
 auto-collect:
-  README.md: true
-  "[TARGET_CODE].md": true
+    README.md: true
+    "[TARGET_CODE].md": true
 additional-knowledge:
-  folder-structure: true
+    folder-structure: true

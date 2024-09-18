@@ -47,7 +47,7 @@ func NewRootCommand() *RootCommand {
 	claudeClient := claude.NewClaudeClient()
 	openAiClient := openAi.NewOpenAIClient()
 
-	initCmd := initCommand.NewInitCommand(configRepo)
+	initCmd := initCommand.NewInitCommand(configRepo, fileRepo)
 	addCmd := addCommand.NewAddCommand(knowledgeRepo)
 	makeCmd := makeCommand.NewMakeCommand(
 		claudeClient,

@@ -4,15 +4,17 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/t-kuni/sisho/domain/repository/config"
+	"github.com/t-kuni/sisho/domain/repository/file"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type InitCommand struct {
 	CobraCommand *cobra.Command
 }
 
-func NewInitCommand(configRepository config.Repository) *InitCommand {
+func NewInitCommand(configRepository config.Repository, fileRepository file.Repository) *InitCommand {
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize a new Sisho project",
@@ -48,7 +50,36 @@ func NewInitCommand(configRepository config.Repository) *InitCommand {
 				return err
 			}
 
-			fmt.Println("Initialized Sisho project. Created sisho.yml in the current directory.")
+			// Create .sisho/history folder
+			historyDir := filepath.Join(currentDir, ".sisho", "history")
+			err = os.MkdirAll(historyDir, 0755)
+			if err != nil {
+				return fmt.Errorf("failed to create .sisho/history folder: %v", err)
+			}
+
+			// Update .gitignore
+			gitignorePath := filepath.Join(currentDir, ".gitignore")
+			gitignoreContent, err := fileRepository.Read(gitignorePath)
+			if err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("failed to read .gitignore: %v", err)
+			}
+
+			if !contains(string(gitignoreContent), "/.sisho") {
+				newContent := string(gitignoreContent)
+				if len(newContent) > 0 && !strings.HasSuffix(newContent, "\n") {
+					newContent += "\n"
+				}
+				newContent += "/.sisho\n"
+				err = fileRepository.Write(gitignorePath, []byte(newContent))
+				if err != nil {
+					return fmt.Errorf("failed to update .gitignore: %v", err)
+				}
+			}
+
+			fmt.Println("Initialized Sisho project:")
+			fmt.Println("- Created sisho.yml in the current directory")
+			fmt.Println("- Created .sisho/history folder")
+			fmt.Println("- Updated .gitignore to ignore /.sisho")
 			return nil
 		},
 	}
@@ -56,4 +87,8 @@ func NewInitCommand(configRepository config.Repository) *InitCommand {
 	return &InitCommand{
 		CobraCommand: cmd,
 	}
+}
+
+func contains(s, substr string) bool {
+	return strings.Contains(s, substr)
 }
