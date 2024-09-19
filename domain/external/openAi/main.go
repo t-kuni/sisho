@@ -1,3 +1,5 @@
+//go:generate mockgen -source=$GOFILE -destination=${GOFILE}_mock.go -package=$GOPACKAGE
+
 package openAi
 
 // Client はOpenAI APIとの通信を抽象化するインターフェースです。

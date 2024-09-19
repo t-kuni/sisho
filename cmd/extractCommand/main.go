@@ -69,7 +69,7 @@ func runExtract(
 
 	rootDir := configFindService.GetProjectRoot(configPath)
 
-	targetContent, err := fileRepository.Read(path)
+	targetContent, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}

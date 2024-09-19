@@ -2,6 +2,7 @@ package contextScan
 
 import (
 	"github.com/t-kuni/sisho/domain/repository/file"
+	"os"
 	"path/filepath"
 )
 
@@ -31,7 +32,7 @@ func (s *ContextScanService) ContextScan(rootDir string, targetPath string) ([]s
 	for {
 		// Collect README.md
 		readmePath := filepath.Join(currentDir, "README.md")
-		if s.fileRepository.Exists(readmePath) {
+		if exists(readmePath) {
 			relPath, err := filepath.Rel(rootDir, readmePath)
 			if err != nil {
 				return nil, err
@@ -41,7 +42,7 @@ func (s *ContextScanService) ContextScan(rootDir string, targetPath string) ([]s
 
 		// Collect [TARGET_CODE].md
 		targetCodeMdPath := filepath.Join(currentDir, filepath.Base(targetPath)+".md")
-		if s.fileRepository.Exists(targetCodeMdPath) {
+		if exists(targetCodeMdPath) {
 			relPath, err := filepath.Rel(rootDir, targetCodeMdPath)
 			if err != nil {
 				return nil, err
@@ -56,4 +57,8 @@ func (s *ContextScanService) ContextScan(rootDir string, targetPath string) ([]s
 	}
 
 	return collectedFiles, nil
+}
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
 }

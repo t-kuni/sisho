@@ -1,0 +1,3 @@
+knowledge:
+    - path: ../../../domain/repository/file/main.go
+      kind: implementations

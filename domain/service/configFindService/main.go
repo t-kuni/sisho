@@ -1,3 +1,5 @@
+//go:generate mockgen -source=$GOFILE -destination=${GOFILE}_mock.go -package=$GOPACKAGE
+
 package configFindService
 
 import (
@@ -11,7 +13,7 @@ type ConfigFindService struct {
 }
 
 type FileRepository interface {
-	Exists(path string) bool
+	Getwd() (string, error)
 }
 
 func NewConfigFindService(fileRepository FileRepository) *ConfigFindService {
@@ -21,7 +23,7 @@ func NewConfigFindService(fileRepository FileRepository) *ConfigFindService {
 }
 
 func (s *ConfigFindService) FindConfig() (string, error) {
-	currentDir, err := os.Getwd()
+	currentDir, err := s.fileRepository.Getwd()
 	if err != nil {
 		return "", err
 	}
@@ -30,10 +32,10 @@ func (s *ConfigFindService) FindConfig() (string, error) {
 		ymlPath := filepath.Join(currentDir, "sisho.yml")
 		yamlPath := filepath.Join(currentDir, "sisho.yaml")
 
-		if s.fileRepository.Exists(ymlPath) {
+		if exists(ymlPath) {
 			return ymlPath, nil
 		}
-		if s.fileRepository.Exists(yamlPath) {
+		if exists(yamlPath) {
 			return yamlPath, nil
 		}
 
@@ -49,4 +51,9 @@ func (s *ConfigFindService) FindConfig() (string, error) {
 
 func (s *ConfigFindService) GetProjectRoot(configPath string) string {
 	return filepath.Dir(configPath)
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
 }

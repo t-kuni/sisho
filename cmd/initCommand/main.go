@@ -20,7 +20,7 @@ func NewInitCommand(configRepository config.Repository, fileRepository file.Repo
 		Short: "Initialize a new Sisho project",
 		Long:  `Initialize a new Sisho project by creating a sisho.yml configuration file in the current directory.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			currentDir, err := os.Getwd()
+			currentDir, err := fileRepository.Getwd()
 			if err != nil {
 				return err
 			}
@@ -59,7 +59,7 @@ func NewInitCommand(configRepository config.Repository, fileRepository file.Repo
 
 			// Update .gitignore
 			gitignorePath := filepath.Join(currentDir, ".gitignore")
-			gitignoreContent, err := fileRepository.Read(gitignorePath)
+			gitignoreContent, err := os.ReadFile(gitignorePath)
 			if err != nil && !os.IsNotExist(err) {
 				return fmt.Errorf("failed to read .gitignore: %v", err)
 			}
@@ -70,7 +70,7 @@ func NewInitCommand(configRepository config.Repository, fileRepository file.Repo
 					newContent += "\n"
 				}
 				newContent += "/.sisho\n"
-				err = fileRepository.Write(gitignorePath, []byte(newContent))
+				err = write(gitignorePath, []byte(newContent))
 				if err != nil {
 					return fmt.Errorf("failed to update .gitignore: %v", err)
 				}
@@ -91,4 +91,12 @@ func NewInitCommand(configRepository config.Repository, fileRepository file.Repo
 
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
+}
+
+func write(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
 }

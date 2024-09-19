@@ -37,3 +37,10 @@ sisho make -a handlers/postUser.go handlers/deleteUser.go
 cp .env.example .env
 go run main.go 
 ```
+
+test
+
+```
+go generate ./...
+go test ./...
+```

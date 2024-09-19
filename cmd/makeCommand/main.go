@@ -228,7 +228,7 @@ func printKnowledgePaths(knowledgeSets []prompts.KnowledgeSet) {
 }
 
 func readTarget(path string, fileRepository file.Repository) (prompts.Target, error) {
-	content, err := fileRepository.Read(path)
+	content, err := os.ReadFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return prompts.Target{}, err
@@ -286,13 +286,13 @@ func applyChanges(path, answer string, fileRepository file.Repository) error {
 
 	newContent := strings.TrimSpace(matches[2])
 
-	oldContent, err := fileRepository.Read(path)
+	oldContent, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
 	if string(oldContent) != newContent {
-		err = fileRepository.Write(path, []byte(newContent))
+		err = write(path, []byte(newContent))
 		if err != nil {
 			return err
 		}
@@ -337,4 +337,12 @@ func getFolderStructure(rootDir string, fileRepository file.Repository) (string,
 		return "", err
 	}
 	return structure.String(), nil
+}
+
+func write(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
 }

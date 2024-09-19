@@ -1,3 +1,5 @@
+//go:generate mockgen -source=$GOFILE -destination=${GOFILE}_mock.go -package=$GOPACKAGE
+
 package claude
 
 // Client はClaude APIとの通信を抽象化するインターフェースです。
