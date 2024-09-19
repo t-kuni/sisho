@@ -3,7 +3,6 @@ package makeCommand
 import (
 	"errors"
 	"fmt"
-	"github.com/segmentio/ksuid"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/spf13/cobra"
 	"github.com/t-kuni/sisho/domain/external/claude"
@@ -15,11 +14,10 @@ import (
 	"github.com/t-kuni/sisho/domain/model/prompts/oneMoreMake"
 	"github.com/t-kuni/sisho/domain/repository/config"
 	"github.com/t-kuni/sisho/domain/repository/file"
-	"github.com/t-kuni/sisho/domain/service/autoCollect"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
-	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
 	"github.com/t-kuni/sisho/domain/service/knowledgeScan"
+	"github.com/t-kuni/sisho/domain/system/ksuid"
 	"github.com/t-kuni/sisho/domain/system/timer"
 	"os"
 	"os/exec"
@@ -29,10 +27,11 @@ import (
 )
 
 type MakeCommand struct {
-	CobraCommand *cobra.Command
-	claudeClient claude.Client
-	openAiClient openAi.Client
-	timer        timer.ITimer
+	CobraCommand   *cobra.Command
+	claudeClient   claude.Client
+	openAiClient   openAi.Client
+	timer          timer.ITimer
+	ksuidGenerator ksuid.IKsuid
 }
 
 func NewMakeCommand(
@@ -41,11 +40,10 @@ func NewMakeCommand(
 	configFindService *configFindService.ConfigFindService,
 	configRepository config.Repository,
 	fileRepository file.Repository,
-	autoCollectService *autoCollect.AutoCollectService,
-	contextScanService *contextScan.ContextScanService,
 	knowledgeScanService *knowledgeScan.KnowledgeScanService,
 	knowledgeLoadService *knowledgeLoad.KnowledgeLoadService,
 	timer timer.ITimer,
+	ksuidGenerator ksuid.IKsuid,
 ) *MakeCommand {
 	var promptFlag bool
 	var applyFlag bool
@@ -56,17 +54,18 @@ func NewMakeCommand(
 		Long:  `Generate files at the specified paths using LLM based on the knowledge sets.`,
 		Args:  cobra.MinimumNArgs(1),
 		RunE: runMake(&promptFlag, &applyFlag, claudeClient, openAiClient, configFindService, configRepository,
-			fileRepository, autoCollectService, contextScanService, knowledgeScanService, knowledgeLoadService, timer),
+			fileRepository, knowledgeScanService, knowledgeLoadService, timer, ksuidGenerator),
 	}
 
 	cmd.Flags().BoolVarP(&promptFlag, "prompt", "p", false, "Open editor for additional instructions")
 	cmd.Flags().BoolVarP(&applyFlag, "apply", "a", false, "Apply LLM output to files")
 
 	return &MakeCommand{
-		CobraCommand: cmd,
-		claudeClient: claudeClient,
-		openAiClient: openAiClient,
-		timer:        timer,
+		CobraCommand:   cmd,
+		claudeClient:   claudeClient,
+		openAiClient:   openAiClient,
+		timer:          timer,
+		ksuidGenerator: ksuidGenerator,
 	}
 }
 
@@ -78,11 +77,10 @@ func runMake(
 	configFindService *configFindService.ConfigFindService,
 	configRepository config.Repository,
 	fileRepository file.Repository,
-	autoCollectService *autoCollect.AutoCollectService,
-	contextScanService *contextScan.ContextScanService,
 	knowledgeScanService *knowledgeScan.KnowledgeScanService,
 	knowledgeLoadService *knowledgeLoad.KnowledgeLoadService,
 	timer timer.ITimer,
+	ksuidGenerator ksuid.IKsuid,
 ) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		configPath, err := configFindService.FindConfig()
@@ -130,7 +128,7 @@ func runMake(
 
 		fmt.Printf("Using LLM: %s with model: %s\n", cfg.LLM.Driver, cfg.LLM.Model)
 
-		historyDir, err := createHistoryDir(rootDir, timer)
+		historyDir, err := createHistoryDir(rootDir, timer, ksuidGenerator)
 		if err != nil {
 			return err
 		}
@@ -246,15 +244,15 @@ func readTarget(path string, fileRepository file.Repository) (prompts.Target, er
 	}, nil
 }
 
-func createHistoryDir(rootDir string, timer timer.ITimer) (string, error) {
+func createHistoryDir(rootDir string, timer timer.ITimer, ksuidGenerator ksuid.IKsuid) (string, error) {
 	historyBaseDir := filepath.Join(rootDir, ".sisho", "history")
 	err := os.MkdirAll(historyBaseDir, 0755)
 	if err != nil {
 		return "", err
 	}
 
-	id := ksuid.New()
-	historyDir := filepath.Join(historyBaseDir, id.String())
+	id := ksuidGenerator.New()
+	historyDir := filepath.Join(historyBaseDir, id)
 	err = os.Mkdir(historyDir, 0755)
 	if err != nil {
 		return "", err

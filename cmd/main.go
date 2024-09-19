@@ -16,6 +16,7 @@ import (
 	"github.com/t-kuni/sisho/infrastructure/repository/config"
 	"github.com/t-kuni/sisho/infrastructure/repository/file"
 	"github.com/t-kuni/sisho/infrastructure/repository/knowledge"
+	"github.com/t-kuni/sisho/infrastructure/system/ksuid"
 	"github.com/t-kuni/sisho/infrastructure/system/timer"
 )
 
@@ -39,6 +40,7 @@ func NewRootCommand() *RootCommand {
 	fileRepo := file.NewFileRepository()
 	configRepo := config.NewConfigRepository()
 	knowledgeRepo := knowledge.NewRepository()
+	ksuidGenerator := ksuid.NewKsuidGenerator()
 	configFindSvc := configFindService.NewConfigFindService(fileRepo)
 	contextScanSvc := contextScan.NewContextScanService(fileRepo)
 	autoCollectSvc := autoCollect.NewAutoCollectService(configRepo, contextScanSvc)
@@ -56,11 +58,10 @@ func NewRootCommand() *RootCommand {
 		configFindSvc,
 		configRepo,
 		fileRepo,
-		autoCollectSvc,
-		contextScanSvc,
 		knowledgeScanSvc,
 		knowledgeLoadSvc,
 		timer.NewTimer(),
+		ksuidGenerator,
 	)
 	extractCmd := extractCommand.NewExtractCommand(
 		claudeClient,

@@ -11,6 +11,7 @@ import (
 	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
 	"github.com/t-kuni/sisho/domain/service/knowledgeScan"
+	"github.com/t-kuni/sisho/domain/system/ksuid"
 	"github.com/t-kuni/sisho/domain/system/timer"
 	config2 "github.com/t-kuni/sisho/infrastructure/repository/config"
 	"github.com/t-kuni/sisho/infrastructure/repository/knowledge"
@@ -22,6 +23,9 @@ import (
 
 func TestMakeCommand(t *testing.T) {
 	t.Run("makeコマンドが正常に実行されること", func(t *testing.T) {
+		// Target Codeが更新されること
+		// 履歴が保存されること
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -73,6 +77,8 @@ dummy text
 		autoCollectSvc := autoCollect.NewAutoCollectService(configRepo, contextScanSvc)
 		knowledgeScanSvc := knowledgeScan.NewKnowledgeScanService(knowledgeRepo, autoCollectSvc)
 		knowledgeLoadSvc := knowledgeLoad.NewKnowledgeLoadService(knowledgeRepo)
+		mockKsuidGenerator := ksuid.NewMockIKsuid(mockCtrl)
+		mockKsuidGenerator.EXPECT().New().Return("test-ksuid")
 
 		makeCmd := NewMakeCommand(
 			mockClaudeClient,
@@ -80,11 +86,10 @@ dummy text
 			configFindSvc,
 			configRepo,
 			mockFileRepo,
-			autoCollectSvc,
-			contextScanSvc,
 			knowledgeScanSvc,
 			knowledgeLoadSvc,
 			mockTimer,
+			mockKsuidGenerator,
 		)
 
 		rootCmd := &cobra.Command{}
@@ -99,10 +104,8 @@ dummy text
 			assert.Equal(t, "UPDATED_CONTENT", string(actual))
 		})
 
-		space.AssertExistPath(filepath.Join(".sisho", "history"))
-
-		//historySubDir := filepath.Join(historyDir, entries[0].Name())
-		//space.AssertExistPath(filepath.Join(historySubDir, "prompt.md"))
-		//space.AssertExistPath(filepath.Join(historySubDir, "answer.md"))
+		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "2022-01-01T00:00:00"))
+		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "prompt.md"))
+		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "answer.md"))
 	})
 }
