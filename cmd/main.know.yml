@@ -1,0 +1,43 @@
+knowledge:
+    - path: addCommand/main.go
+      kind: implementations
+    - path: extractCommand/main.go
+      kind: implementations
+    - path: initCommand/main.go
+      kind: implementations
+    - path: makeCommand/main.go
+      kind: implementations
+    - path: ../domain/model/kinds/main.go
+      kind: implementations
+    - path: ../domain/model/prompts/main.go
+      kind: implementations
+    - path: ../domain/model/prompts/extract/main.go
+      kind: implementations
+    - path: ../domain/model/prompts/oneMoreMake/main.go
+      kind: implementations
+    - path: ../domain/repository/config/main.go
+      kind: implementations
+    - path: ../domain/repository/file/main.go
+      kind: implementations
+    - path: ../domain/repository/knowledge/main.go
+      kind: implementations
+    - path: ../domain/service/autoCollect/main.go
+      kind: implementations
+    - path: ../domain/service/configFindService/main.go
+      kind: implementations
+    - path: ../domain/service/contextScan/main.go
+      kind: implementations
+    - path: ../domain/service/knowledgeLoad/main.go
+      kind: implementations
+    - path: ../domain/service/knowledgeScan/main.go
+      kind: implementations
+    - path: ../infrastructure/external/claude/main.go
+      kind: implementations
+    - path: ../infrastructure/external/openAi/main.go
+      kind: implementations
+    - path: ../infrastructure/repository/config/main.go
+      kind: implementations
+    - path: ../infrastructure/repository/file/main.go
+      kind: implementations
+    - path: ../infrastructure/repository/knowledge/main.go
+      kind: implementations

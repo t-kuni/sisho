@@ -1,5 +1,9 @@
 knowledge:
   - path: main.go
     kind: implementations
+  - path: ../initCommand/main_test.go
+    kind: examples
+  - path: ../addCommand/main_test.go
+    kind: examples
   - path: ../../testUtil/main.go
     kind: implementations

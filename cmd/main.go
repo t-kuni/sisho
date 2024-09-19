@@ -16,6 +16,7 @@ import (
 	"github.com/t-kuni/sisho/infrastructure/repository/config"
 	"github.com/t-kuni/sisho/infrastructure/repository/file"
 	"github.com/t-kuni/sisho/infrastructure/repository/knowledge"
+	"github.com/t-kuni/sisho/infrastructure/system/timer"
 )
 
 type RootCommand struct {
@@ -59,6 +60,7 @@ func NewRootCommand() *RootCommand {
 		contextScanSvc,
 		knowledgeScanSvc,
 		knowledgeLoadSvc,
+		timer.NewTimer(),
 	)
 	extractCmd := extractCommand.NewExtractCommand(
 		claudeClient,

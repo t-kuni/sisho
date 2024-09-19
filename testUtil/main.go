@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 type Space struct {
@@ -62,4 +63,12 @@ func (s Space) AssertExistPath(path string) {
 
 	_, err := os.Stat(path)
 	assert.NoError(s.t, err)
+}
+
+func NewTime(timeStr string) time.Time {
+	t, err := time.Parse("2006-01-02T15:04:05Z07:00", timeStr)
+	if err != nil {
+		panic(err)
+	}
+	return t
 }

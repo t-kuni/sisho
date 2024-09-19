@@ -20,18 +20,19 @@ import (
 	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
 	"github.com/t-kuni/sisho/domain/service/knowledgeScan"
+	"github.com/t-kuni/sisho/domain/system/timer"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 )
 
 type MakeCommand struct {
 	CobraCommand *cobra.Command
 	claudeClient claude.Client
 	openAiClient openAi.Client
+	timer        timer.ITimer
 }
 
 func NewMakeCommand(
@@ -44,6 +45,7 @@ func NewMakeCommand(
 	contextScanService *contextScan.ContextScanService,
 	knowledgeScanService *knowledgeScan.KnowledgeScanService,
 	knowledgeLoadService *knowledgeLoad.KnowledgeLoadService,
+	timer timer.ITimer,
 ) *MakeCommand {
 	var promptFlag bool
 	var applyFlag bool
@@ -54,7 +56,7 @@ func NewMakeCommand(
 		Long:  `Generate files at the specified paths using LLM based on the knowledge sets.`,
 		Args:  cobra.MinimumNArgs(1),
 		RunE: runMake(&promptFlag, &applyFlag, claudeClient, openAiClient, configFindService, configRepository,
-			fileRepository, autoCollectService, contextScanService, knowledgeScanService, knowledgeLoadService),
+			fileRepository, autoCollectService, contextScanService, knowledgeScanService, knowledgeLoadService, timer),
 	}
 
 	cmd.Flags().BoolVarP(&promptFlag, "prompt", "p", false, "Open editor for additional instructions")
@@ -64,6 +66,7 @@ func NewMakeCommand(
 		CobraCommand: cmd,
 		claudeClient: claudeClient,
 		openAiClient: openAiClient,
+		timer:        timer,
 	}
 }
 
@@ -79,6 +82,7 @@ func runMake(
 	contextScanService *contextScan.ContextScanService,
 	knowledgeScanService *knowledgeScan.KnowledgeScanService,
 	knowledgeLoadService *knowledgeLoad.KnowledgeLoadService,
+	timer timer.ITimer,
 ) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		configPath, err := configFindService.FindConfig()
@@ -126,7 +130,7 @@ func runMake(
 
 		fmt.Printf("Using LLM: %s with model: %s\n", cfg.LLM.Driver, cfg.LLM.Model)
 
-		historyDir, err := createHistoryDir(rootDir)
+		historyDir, err := createHistoryDir(rootDir, timer)
 		if err != nil {
 			return err
 		}
@@ -242,7 +246,7 @@ func readTarget(path string, fileRepository file.Repository) (prompts.Target, er
 	}, nil
 }
 
-func createHistoryDir(rootDir string) (string, error) {
+func createHistoryDir(rootDir string, timer timer.ITimer) (string, error) {
 	historyBaseDir := filepath.Join(rootDir, ".sisho", "history")
 	err := os.MkdirAll(historyBaseDir, 0755)
 	if err != nil {
@@ -256,7 +260,7 @@ func createHistoryDir(rootDir string) (string, error) {
 		return "", err
 	}
 
-	timeFile := filepath.Join(historyDir, time.Now().Format("2006-01-02T15:04:05"))
+	timeFile := filepath.Join(historyDir, timer.Now().Format("2006-01-02T15:04:05"))
 	_, err = os.Create(timeFile)
 	if err != nil {
 		return "", err
