@@ -7,7 +7,7 @@ Sisho is a LLM powered knowledge-driven code generation framework.
 # Install
 
 ```
-go install github.com/t-kuni/sisho
+go install github.com/t-kuni/sisho@latest
 ```
 
 # Usage
