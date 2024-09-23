@@ -4,10 +4,16 @@ lang: [EN](README.markdown) | [JA](README.ja.markdown)
 
 Sisho is a LLM powered knowledge-driven code generation framework.
 
+# Demo
+
+* [Web Page Generation Demo](https://github.com/t-kuni/sisho-demo/tree/master/1-web-page)
+* [CLI App Generation Demo](https://github.com/t-kuni/sisho-demo/tree/master/2-cli-app)
+* [API Server Generation Demo](https://github.com/t-kuni/sisho-demo/tree/master/3-api-server)
+
 # Install
 
 ```
-go install github.com/t-kuni/sisho@latest
+GOPROXY=direct go install github.com/t-kuni/sisho@master
 ```
 
 # Usage
