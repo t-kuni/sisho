@@ -25,6 +25,7 @@ func TestMakeCommand(t *testing.T) {
 	type Mocks struct {
 		Timer          *timer.MockITimer
 		ClaudeClient   *claude.MockClient
+		OpenAiClient   *openAi.MockClient
 		FileRepository *file.MockRepository
 		KsuidGenerator *ksuid.MockIKsuid
 	}
@@ -49,6 +50,7 @@ func TestMakeCommand(t *testing.T) {
 
 		customizeMocks(Mocks{
 			ClaudeClient:   mockClaudeClient,
+			OpenAiClient:   mockOpenAiClient,
 			FileRepository: mockFileRepo,
 			Timer:          mockTimer,
 			KsuidGenerator: mockKsuidGenerator,
@@ -74,8 +76,6 @@ func TestMakeCommand(t *testing.T) {
 	}
 
 	t.Run("指定したファイルに生成されたコードが反映されること", func(t *testing.T) {
-		// 指定したコードがプロンプトに埋め込まれること
-
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -111,6 +111,7 @@ dummy text
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+					assert.Contains(t, messages[0].Content, "aaa/bbb/ccc/ddd.txt")
 					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT")
 					return generated, nil
 				})
@@ -163,5 +164,80 @@ UPDATED_CONTENT
 		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "2022-01-01T00:00:00"))
 		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "prompt.md"))
 		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "answer.md"))
+	})
+
+	t.Run("Knowledgeスキャンが正しく行われることを検証する", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		space := testUtil.BeginTestSpace(t)
+		defer space.CleanUp()
+
+		// Setup Files
+		config := `
+lang: ja
+llm:
+   driver: anthropic
+   model: claude-3-5-sonnet-20240620
+auto-collect:
+   README.md: true
+   "[TARGET_CODE].md": true
+additional-knowledge:
+   folder-structure: true
+`
+		space.WriteFile("sisho.yml", []byte(config))
+		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+
+		space.WriteFile("aaa/bbb/SPEC.md", []byte("This is SPEC.md"))
+		space.WriteFile("aaa/bbb/ccc/.knowledge.yml", []byte(`
+knowledge:
+  - path: ../SPEC.md
+    kind: specifications
+`))
+
+		space.WriteFile("aaa/bbb/SPEC2.md", []byte("This is SPEC2.md"))
+		space.WriteFile("aaa/.knowledge.yml", []byte(`
+knowledge:
+  - path: bbb/SPEC2.md
+    kind: specifications
+`))
+		//		space.WriteFile("aaa/bbb/ccc/ddd.know.yml", []byte(`
+		//knowledge:
+		//  - path: ddd.txt
+		//    kind: specifications
+		//`))
+		//		space.WriteFile("aaa/bbb/README.md", []byte("This is README"))
+		//space.WriteFile("aaa/bbb/ccc/ddd.md", []byte("This is ddd.md"))
+
+		generated := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+					content := messages[0].Content
+					// Check if knowledge from .knowledge.yml is included
+					assert.Contains(t, content, "aaa/bbb/SPEC.md")
+					assert.Contains(t, content, "This is SPEC.md")
+					assert.Contains(t, content, "aaa/bbb/SPEC2.md")
+					assert.Contains(t, content, "This is SPEC2.md")
+					// Check if auto-collected README.md is included
+					//assert.Contains(t, content, "This is README")
+					// Check if auto-collected ddd.md is included
+					//assert.Contains(t, content, "This is ddd.md")
+					return generated, nil
+				})
+			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+		})
+		assert.NoError(t, err)
+
+		// Assert
+		space.AssertFile("aaa/bbb/ccc/ddd.txt", func(actual []byte) {
+			assert.Equal(t, "UPDATED_CONTENT", string(actual))
+		})
 	})
 }
