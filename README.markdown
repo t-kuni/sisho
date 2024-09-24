@@ -2,7 +2,21 @@ lang: [EN](README.markdown) | [JA](README.ja.markdown)
 
 ![Frame 5](https://github.com/user-attachments/assets/94a975ec-4e90-49fe-81b7-c1d358f76a77)
 
-Sisho is a LLM powered knowledge-driven code generation framework.
+Sisho is a LLM powered knowledge-driven code generation tool.
+
+- Strengths
+  - High-precision code generation by including domain knowledge<font color="red">*</font> in the prompt
+  - Domain knowledge<font color="red">*</font> can be managed with the `.knowledge.yml` file and automatically used according to the generation target
+  - Maintain consistency between files by generating multiple files simultaneously
+  - Speed up horizontal deployment based on existing implementations
+  - Generate test code based on specifications
+
+<font color="red">*</font> Specifications, related code, sample implementations, etc.
+
+- Concept
+  - Aiming for controllable and high-precision generation instead of fully automated autonomous type (code does not become a black box)
+  - Aiming to quickly generate an initial implementation of about 80 points for those who can create a grand design of software
+
 
 # Demo
 
