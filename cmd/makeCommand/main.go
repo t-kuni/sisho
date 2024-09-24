@@ -26,6 +26,7 @@ import (
 	"strings"
 )
 
+// MakeCommand は、makeコマンドの構造体です。
 type MakeCommand struct {
 	CobraCommand   *cobra.Command
 	claudeClient   claude.Client
@@ -34,6 +35,7 @@ type MakeCommand struct {
 	ksuidGenerator ksuid.IKsuid
 }
 
+// NewMakeCommand は、MakeCommandの新しいインスタンスを作成します。
 func NewMakeCommand(
 	claudeClient claude.Client,
 	openAiClient openAi.Client,
@@ -69,6 +71,7 @@ func NewMakeCommand(
 	}
 }
 
+// runMake は、makeコマンドの主要なロジックを実行します。
 func runMake(
 	promptFlag *bool,
 	applyFlag *bool,
@@ -83,6 +86,7 @@ func runMake(
 	ksuidGenerator ksuid.IKsuid,
 ) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
+		// 設定ファイルの読み込み
 		configPath, err := configFindService.FindConfig()
 		if err != nil {
 			return err
@@ -95,6 +99,7 @@ func runMake(
 
 		rootDir := configFindService.GetProjectRoot(configPath)
 
+		// 知識のスキャンとロード
 		scannedKnowledge, err := knowledgeScanService.ScanKnowledge(rootDir, args)
 		if err != nil {
 			return err
@@ -105,18 +110,21 @@ func runMake(
 			return err
 		}
 
+		// 追加の指示の取得
 		var instructions string
 		if *promptFlag {
 			instructions, err = getAdditionalInstructions()
 			if err != nil {
 				return err
 			}
+			fmt.Println("Additional instructions:")
+			fmt.Println(instructions)
 		}
 
 		printKnowledgePaths(knowledgeSets)
 
+		// チャットモデルの選択
 		var chat chat2.Chat
-
 		switch cfg.LLM.Driver {
 		case "open-ai":
 			chat = modelOpenAi.NewOpenAiChat(openAiClient)
@@ -128,11 +136,13 @@ func runMake(
 
 		fmt.Printf("Using LLM: %s with model: %s\n", cfg.LLM.Driver, cfg.LLM.Model)
 
+		// 履歴ディレクトリの作成
 		historyDir, err := createHistoryDir(rootDir, timer, ksuidGenerator)
 		if err != nil {
 			return err
 		}
 
+		// 各ターゲットに対する処理
 		for i, path := range args {
 			target, err := readTarget(path, fileRepository)
 			if err != nil {
@@ -189,6 +199,7 @@ func runMake(
 	}
 }
 
+// getAdditionalInstructions は、ユーザーから追加の指示を取得します。
 func getAdditionalInstructions() (string, error) {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
@@ -216,9 +227,10 @@ func getAdditionalInstructions() (string, error) {
 		return "", err
 	}
 
-	return string(instructions), nil
+	return strings.TrimSpace(string(instructions)), nil
 }
 
+// printKnowledgePaths は、ナレッジのパスを出力します。
 func printKnowledgePaths(knowledgeSets []prompts.KnowledgeSet) {
 	fmt.Println("Knowledge paths:")
 	for _, set := range knowledgeSets {
@@ -229,6 +241,7 @@ func printKnowledgePaths(knowledgeSets []prompts.KnowledgeSet) {
 	fmt.Println()
 }
 
+// readTarget は、指定されたパスのターゲットを読み込みます。
 func readTarget(path string, fileRepository file.Repository) (prompts.Target, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -244,6 +257,7 @@ func readTarget(path string, fileRepository file.Repository) (prompts.Target, er
 	}, nil
 }
 
+// createHistoryDir は、履歴ディレクトリを作成します。
 func createHistoryDir(rootDir string, timer timer.ITimer, ksuidGenerator ksuid.IKsuid) (string, error) {
 	historyBaseDir := filepath.Join(rootDir, ".sisho", "history")
 	err := os.MkdirAll(historyBaseDir, 0755)
@@ -267,6 +281,7 @@ func createHistoryDir(rootDir string, timer timer.ITimer, ksuidGenerator ksuid.I
 	return historyDir, nil
 }
 
+// saveHistory は、プロンプトと回答を履歴として保存します。
 func saveHistory(historyDir, prompt, answer string) error {
 	err := os.WriteFile(filepath.Join(historyDir, "prompt.md"), []byte(prompt), 0644)
 	if err != nil {
@@ -276,6 +291,7 @@ func saveHistory(historyDir, prompt, answer string) error {
 	return os.WriteFile(filepath.Join(historyDir, "answer.md"), []byte(answer), 0644)
 }
 
+// applyChanges は、LLMの出力をファイルに適用します。
 func applyChanges(path, answer string, fileRepository file.Repository) error {
 	// この正規表現は絶対に変更しないでください
 	// gpt-4だとコードブロックの終了からコメントの間に1文字入ることがある
@@ -305,12 +321,14 @@ func applyChanges(path, answer string, fileRepository file.Repository) error {
 	return nil
 }
 
+// printDiff は、古い内容と新しい内容の差分を出力します。
 func printDiff(oldContent, newContent string) {
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(oldContent, newContent, false)
 	fmt.Println(dmp.DiffPrettyText(diffs))
 }
 
+// getFolderStructure は、指定されたディレクトリのフォルダ構造を取得します。
 func getFolderStructure(rootDir string, fileRepository file.Repository) (string, error) {
 	var structure strings.Builder
 	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
@@ -341,6 +359,7 @@ func getFolderStructure(rootDir string, fileRepository file.Repository) (string,
 	return structure.String(), nil
 }
 
+// write は、指定されたパスにデータを書き込みます。
 func write(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {

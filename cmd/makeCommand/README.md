@@ -18,6 +18,7 @@ command make [path1], [path2]...
   * 環境変数EDITORで指定されたエディタで追加のpromptを指定できる
   * 環境変数EDITORが存在しない場合は`vi`が使われる
   * 入力したテキストはprompt.md.tmplのInstructionsとして渡される
+  * 入力したテキストは標準出力にも出力される
 * `-a`, `--apply` オプションについて
   * LLMの出力をファイルに反映します 
     * LLMの出力には余分な文章が含まれる可能性があるため、 Capturable Code Blockの仕様に基づいて切り出した結果をファイルに反映します
