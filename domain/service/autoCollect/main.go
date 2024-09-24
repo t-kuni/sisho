@@ -4,6 +4,7 @@ import (
 	"github.com/t-kuni/sisho/domain/repository/config"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"path/filepath"
+	"strings"
 )
 
 type AutoCollectService struct {
@@ -35,7 +36,8 @@ func (s *AutoCollectService) CollectAutoCollectFiles(rootDir string, targetPath 
 		if cfg.AutoCollect.ReadmeMd && baseName == "README.md" {
 			collectedFiles = append(collectedFiles, file)
 		}
-		if cfg.AutoCollect.TargetCodeMd && baseName == filepath.Base(targetPath)+".md" {
+		targetName := strings.TrimSuffix(filepath.Base(targetPath), filepath.Ext(targetPath))
+		if cfg.AutoCollect.TargetCodeMd && baseName == targetName+".md" {
 			collectedFiles = append(collectedFiles, file)
 		}
 	}

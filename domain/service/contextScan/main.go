@@ -4,6 +4,7 @@ import (
 	"github.com/t-kuni/sisho/domain/repository/file"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type ContextScanService struct {
@@ -41,7 +42,8 @@ func (s *ContextScanService) ContextScan(rootDir string, targetPath string) ([]s
 		}
 
 		// Collect [TARGET_CODE].md
-		targetCodeMdPath := filepath.Join(currentDir, filepath.Base(targetPath)+".md")
+		targetName := strings.TrimSuffix(filepath.Base(targetPath), filepath.Ext(targetPath))
+		targetCodeMdPath := filepath.Join(currentDir, targetName+".md")
 		if exists(targetCodeMdPath) {
 			relPath, err := filepath.Rel(rootDir, targetCodeMdPath)
 			if err != nil {
@@ -58,6 +60,7 @@ func (s *ContextScanService) ContextScan(rootDir string, targetPath string) ([]s
 
 	return collectedFiles, nil
 }
+
 func exists(path string) bool {
 	_, err := os.Stat(path)
 	return !os.IsNotExist(err)
