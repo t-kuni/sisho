@@ -7,7 +7,7 @@ Sisho is a LLM powered knowledge-driven code generation tool.
 - Strengths
   - High-precision code generation by including domain knowledge[^1] in the prompt
   - Domain knowledge[^1] can be managed with the `.knowledge.yml` file and automatically used according to the generation target
-  - Maintain consistency between files by generating multiple files simultaneously
+  - Generate multiple files simultaneously to maintain consistency between files
   - Speed up horizontal deployment based on existing implementations
   - Generate test code based on specifications
 - Concept
