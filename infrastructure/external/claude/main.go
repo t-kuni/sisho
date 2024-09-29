@@ -16,6 +16,7 @@ type ClaudeClient struct {
 	apiKey string
 }
 
+// NewClaudeClient initializes a new client for Claude API with necessary settings.
 func NewClaudeClient() *ClaudeClient {
 	apiKey := os.Getenv("ANTHROPIC_API_KEY")
 	if apiKey == "" {
@@ -24,6 +25,7 @@ func NewClaudeClient() *ClaudeClient {
 	return &ClaudeClient{apiKey: apiKey}
 }
 
+// SendMessage sends an array of Message to Claude API and waits for a response.
 func (c *ClaudeClient) SendMessage(messages []claude.Message, model string) (string, error) {
 	client := resty.New()
 
@@ -48,18 +50,19 @@ func (c *ClaudeClient) SendMessage(messages []claude.Message, model string) (str
 		Post("https://api.anthropic.com/v1/messages")
 
 	if err != nil {
-		b, _ := io.ReadAll(resp.RawBody())
-		return "", fmt.Errorf("%w : %s", err, string(b))
+		return "", err
 	}
 	defer resp.RawBody().Close()
 
 	if resp.StatusCode() != 200 {
-		return "", fmt.Errorf("API request failed with status code: %d", resp.StatusCode())
+		b, _ := io.ReadAll(resp.RawBody())
+		return "", fmt.Errorf("API request failed with status code: %d and response: %s", resp.StatusCode(), string(b))
 	}
 
 	return processStreamResponse(resp.RawBody())
 }
 
+// convertMessages converts domain messages to infrastructure layer messages.
 func convertMessages(messages []claude.Message) []Message {
 	converted := make([]Message, len(messages))
 	for i, msg := range messages {
@@ -71,6 +74,7 @@ func convertMessages(messages []claude.Message) []Message {
 	return converted
 }
 
+// processStreamResponse handles the streaming response from Claude API.
 func processStreamResponse(body io.ReadCloser) (string, error) {
 	reader := bufio.NewReader(body)
 	var fullResponse strings.Builder
