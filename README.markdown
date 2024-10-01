@@ -25,7 +25,7 @@ Sisho is a LLM powered knowledge-driven code generation tool.
 # Install
 
 ```
-GOPROXY=direct go install github.com/t-kuni/sisho@master
+go install github.com/t-kuni/sisho@v0.1.0
 ```
 
 # Usage
