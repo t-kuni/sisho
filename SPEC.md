@@ -62,12 +62,18 @@ additional-knowledge:
 本ツールでスキャフォルドする対象のコードを指します。
 makeコマンドの引数で指定します。
 
-## Targetスキャンとは
+## コンテキストスキャンとは
 
 * プロジェクトルートからTarget Codeのディレクトリまでの各階層を走査し必要な処理を行うことです。
+  * 隠しフォルダは対象外です。
 * 用途の例
   * 各階層の.knowledge.ymlを読み込む
   * 各階層のREADME.mdを読み込む
+
+## プロジェクトスキャンとは
+
+* プロジェクトルート以下の全ての階層を走査し必要な処理を行うことです。
+  * 隠しフォルダは対象外です。
 
 ## 知識リストファイルとは
 
@@ -88,8 +94,12 @@ knowledge:
     kind: dependencies
   - path: cmd/makeCommand/main.go
     kind: examples
-  - path: kinds/main.go
+  - path: lib/package1/main.go
     kind: implementations
+    chain-make: true
+  - path: lib/package2/main.go
+    kind: implementations
+    chain-make: true
   - path: README.md
     kind: specifications
 ```
@@ -97,6 +107,9 @@ knowledge:
 * path
   * string型
   * 当該.knowledge.ymlから対象ファイルまでの相対パスを指定します
+* chain-make
+  * bool型
+  * 省略可能。省略した場合、falseとして扱われます
 
 ## knowledgeスキャンとは
 

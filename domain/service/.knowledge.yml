@@ -1,0 +1,5 @@
+knowledge:
+  - path: contextScan/main.go
+    kind: examples
+  - path: knowledgeLoad/main.go
+    kind: examples

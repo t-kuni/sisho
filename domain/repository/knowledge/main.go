@@ -7,8 +7,9 @@ import (
 )
 
 type Knowledge struct {
-	Path string
-	Kind kinds.KindName
+	Path      string
+	Kind      kinds.KindName
+	ChainMake bool `yaml:"chain-make,omitempty"`
 }
 
 type KnowledgeFile struct {
