@@ -1,0 +1,5 @@
+knowledge:
+  - path: ../../../domain/repository/depsGraph/main.go
+    kind: implementations
+  - path: ../../../domain/repository/depsGraph/README.md
+    kind: specifications

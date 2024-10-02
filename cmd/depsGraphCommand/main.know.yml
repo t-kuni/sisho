@@ -1,0 +1,9 @@
+knowledge:
+  - path: ../../domain/service/configFindService/main.go
+    kind: implementations
+  - path: ../../domain/service/projectScan/main.go
+    kind: implementations
+  - path: ../../domain/repository/knowledge/main.go
+    kind: implementations
+  - path: ../../domain/repository/depsGraph/main.go
+    kind: implementations

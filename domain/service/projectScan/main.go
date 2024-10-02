@@ -17,6 +17,8 @@ func NewProjectScanService(fileRepository file.Repository) *ProjectScanService {
 	}
 }
 
+// ScanFunc
+// path はrootDirからの相対パス
 type ScanFunc func(path string, info os.FileInfo) error
 
 func (s *ProjectScanService) Scan(rootDir string, scanFunc ScanFunc) error {
@@ -43,7 +45,8 @@ func (s *ProjectScanService) Scan(rootDir string, scanFunc ScanFunc) error {
 			if err != nil {
 				return err
 			}
-			if ignore.Match(relPath) != nil {
+
+			if relPath != "." && ignore.Match(relPath) != nil {
 				if info.IsDir() {
 					return filepath.SkipDir
 				}
@@ -51,7 +54,11 @@ func (s *ProjectScanService) Scan(rootDir string, scanFunc ScanFunc) error {
 			}
 		}
 
-		// Call the scan function for each file/directory
-		return scanFunc(path, info)
+		// Call the scan function with relative path
+		relPath, err := filepath.Rel(rootDir, path)
+		if err != nil {
+			return err
+		}
+		return scanFunc(relPath, info)
 	})
 }

@@ -1,0 +1,7 @@
+knowledge:
+  - path: main.go
+    kind: implementations
+  - path: ../makeCommand/main_test.go
+    kind: examples
+  - path: ../../testUtil/main.go
+    kind: implementations

@@ -37,6 +37,13 @@ func BeginTestSpace(t *testing.T) Space {
 	}
 }
 
+func (s Space) MkDir(dir string) {
+	s.t.Helper()
+
+	err := os.MkdirAll(dir, os.ModePerm)
+	assert.NoError(s.t, err)
+}
+
 func (s Space) WriteFile(path string, content []byte) {
 	s.t.Helper()
 

@@ -1,0 +1,5 @@
+knowledge:
+  - path: config/main.go
+    kind: examples
+  - path: knowledge/main.go
+    kind: examples

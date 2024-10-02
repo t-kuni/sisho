@@ -1,19 +1,19 @@
-## Software Architecture
+# Software Architecture
 
 * /cmd/main.go でサブコマンドの初期化、依存モジュールの初期化とDIを行う
 * /cmd/**/main.go に各サブコマンドの処理を記述する。ドメインロジックは大枠ここに記述される
 * /domain 配下にドメインモデルやビジネスロジック、infrastructure層とのインターフェースを定義する
 * /infrastructure 配下に外部との通信やファイルへのアクセスなどのI/O処理を定義する
 
-## エントリーポイント
+# エントリーポイント
 
 当該ソフトウェアのエントリーポイントは /main.go です。
 
-## プロジェクトコンフィグについて
+# プロジェクトコンフィグについて
 
 * `sisho.yml`のこと
 
-### プロジェクトコンフィグ(sisho.yml)のサンプル
+## プロジェクトコンフィグ(sisho.yml)のサンプル
 
 ```yaml
 lang: ja
@@ -27,7 +27,7 @@ additional-knowledge:
   folder-structure: true
 ```
 
-### llmについて
+## llmについて
 
 * driver
   * `open-ai` を指定した場合、OpenAIのAPIを利用する
@@ -36,7 +36,7 @@ additional-knowledge:
   * string型
   * 各種サービスのモデル名に準拠
 
-### auto-collectについて
+## auto-collectについて
 
 * README.md
   * bool型 
@@ -48,21 +48,21 @@ additional-knowledge:
   * [TARGET_CODE]はTarget Codeのファイル名を指す
   * kindはspecificationsとして扱う
 
-### additional-knowledge.folder-structureについて
+## additional-knowledge.folder-structureについて
 
 * bool型
 * trueの場合、makeコマンド実行時、プロジェクトルート配下のフォルダ構造情報をプロンプトに追加する
 
-## プロジェクトルートとは
+# プロジェクトルートとは
 
 プロジェクトルートは`sisho.yml`が存在するディレクトリを指します。
 
-## Target Codeとは
+# Target Codeとは
 
 本ツールでスキャフォルドする対象のコードを指します。
 makeコマンドの引数で指定します。
 
-## コンテキストスキャンとは
+# コンテキストスキャンとは
 
 * プロジェクトルートからTarget Codeのディレクトリまでの各階層を走査し必要な処理を行うことです。
   * 隠しフォルダは対象外です。
@@ -70,12 +70,12 @@ makeコマンドの引数で指定します。
   * 各階層の.knowledge.ymlを読み込む
   * 各階層のREADME.mdを読み込む
 
-## プロジェクトスキャンとは
+# プロジェクトスキャンとは
 
 * プロジェクトルート以下の全ての階層を走査し必要な処理を行うことです。
   * 隠しフォルダは対象外です。
 
-## 知識リストファイルとは
+# 知識リストファイルとは
 
 * ２種類ある
   * レイヤー知識リストファイル（`.knowledge.yml`）
@@ -86,7 +86,7 @@ makeコマンドの引数で指定します。
 * Target Codeに対応する知識リストファイルを読み込み、makeコマンド実行時にLLMに提示するファイルを指定します。
 * このファイルは省略可能です。
 
-### 知識リストファイルのサンプル
+## 知識リストファイルのサンプル
 
 ```yaml
 knowledge:
@@ -111,14 +111,14 @@ knowledge:
   * bool型
   * 省略可能。省略した場合、falseとして扱われます
 
-## knowledgeスキャンとは
+# knowledgeスキャンとは
 
 * コンテキストスキャンを用いて各階層のレイヤー知識リストファイル（`.knowledge.yml`）を読み込むことです。
   * `.knowledge.yml`は省略可能なので、存在しない場合は無視され処理は継続します。
   * `.knowledge.yml`で指定したファイルが重複する場合は１つにまとめられます。
   * Target Codeが複数指定された場合、全てのTarget CodeについてKnowledgeスキャンを行います
 
-## Capturable Code Block とは
+# Capturable Code Block とは
 
 以下の書式に従うコードブロックを指します。
 
@@ -126,19 +126,19 @@ knowledge:
 * コードブロック終了の書式： ```\<!-- CODE_BLOCK_END -->
 * [Target Code Path]はTarget Codeのパス（プロジェクトルートからの相対パス）を指します
 
-### Capturable Code Blockの本文を切り出す正規表現
+## Capturable Code Blockの本文を切り出す正規表現
 
 ```go
 re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "(.*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
 ```
 
-## フォルダ構造情報とは
+# フォルダ構造情報とは
 
 * treeコマンドの出力のようなフォルダ構造を表したテキストのこと
 * 隠しフォルダは出力されません
 * フォルダの名前には接頭辞`/`がつきます
 
-### フォルダ構造情報のサンプル
+## フォルダ構造情報のサンプル
 
 ```txt
 A
@@ -150,3 +150,7 @@ A
 D
   d.yml
 ```
+
+# 依存グラフ(depsGraph)とは
+
+* 指定したファイルに依存しているファイルを逆引きするためのグラフです
