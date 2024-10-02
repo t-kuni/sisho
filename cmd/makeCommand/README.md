@@ -14,6 +14,9 @@ command make [path1], [path2]...
   * LLMで生成した結果は、ファイルに直接書き込まず、標準出力に出力する
 
 * promptはprompts/prompt.md.tmplに従う
+* `-c`, `--chain` オプションについて
+  * 指定されたTarget Codeに依存しているファイルを依存グラフ（.sisho/deps-graph.json）から再帰的に取得し、それらのファイルもTarget Codeとして扱う
+  * Target Codeの順番は依存グラフの深度の浅い順に並べる
 * `-p`, `--prompt` オプションについて
   * 環境変数EDITORで指定されたエディタで追加のpromptを指定できる
   * 環境変数EDITORが存在しない場合は`vi`が使われる

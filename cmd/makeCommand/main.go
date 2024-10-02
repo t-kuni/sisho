@@ -13,6 +13,7 @@ import (
 	"github.com/t-kuni/sisho/domain/model/prompts"
 	"github.com/t-kuni/sisho/domain/model/prompts/oneMoreMake"
 	"github.com/t-kuni/sisho/domain/repository/config"
+	"github.com/t-kuni/sisho/domain/repository/depsGraph"
 	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
@@ -23,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -44,23 +46,26 @@ func NewMakeCommand(
 	fileRepository file.Repository,
 	knowledgeScanService *knowledgeScan.KnowledgeScanService,
 	knowledgeLoadService *knowledgeLoad.KnowledgeLoadService,
+	depsGraphRepo depsGraph.Repository,
 	timer timer.ITimer,
 	ksuidGenerator ksuid.IKsuid,
 ) *MakeCommand {
 	var promptFlag bool
 	var applyFlag bool
+	var chainFlag bool
 
 	cmd := &cobra.Command{
 		Use:   "make [path...]",
 		Short: "Generate files using LLM",
 		Long:  `Generate files at the specified paths using LLM based on the knowledge sets.`,
 		Args:  cobra.MinimumNArgs(1),
-		RunE: runMake(&promptFlag, &applyFlag, claudeClient, openAiClient, configFindService, configRepository,
-			fileRepository, knowledgeScanService, knowledgeLoadService, timer, ksuidGenerator),
+		RunE: runMake(&promptFlag, &applyFlag, &chainFlag, claudeClient, openAiClient, configFindService, configRepository,
+			fileRepository, knowledgeScanService, knowledgeLoadService, depsGraphRepo, timer, ksuidGenerator),
 	}
 
 	cmd.Flags().BoolVarP(&promptFlag, "prompt", "p", false, "Open editor for additional instructions")
 	cmd.Flags().BoolVarP(&applyFlag, "apply", "a", false, "Apply LLM output to files")
+	cmd.Flags().BoolVarP(&chainFlag, "chain", "c", false, "Include dependent files based on deps-graph")
 
 	return &MakeCommand{
 		CobraCommand:   cmd,
@@ -75,6 +80,7 @@ func NewMakeCommand(
 func runMake(
 	promptFlag *bool,
 	applyFlag *bool,
+	chainFlag *bool,
 	claudeClient claude.Client,
 	openAiClient openAi.Client,
 	configFindService *configFindService.ConfigFindService,
@@ -82,6 +88,7 @@ func runMake(
 	fileRepository file.Repository,
 	knowledgeScanService *knowledgeScan.KnowledgeScanService,
 	knowledgeLoadService *knowledgeLoad.KnowledgeLoadService,
+	depsGraphRepo depsGraph.Repository,
 	timer timer.ITimer,
 	ksuidGenerator ksuid.IKsuid,
 ) func(cmd *cobra.Command, args []string) error {
@@ -98,6 +105,14 @@ func runMake(
 		}
 
 		rootDir := configFindService.GetProjectRoot(configPath)
+
+		// チェーンフラグが設定されている場合、依存グラフを使用してターゲットを拡張
+		if *chainFlag {
+			args, err = expandTargetsWithDependencies(args, rootDir, depsGraphRepo)
+			if err != nil {
+				return err
+			}
+		}
 
 		// 知識のスキャンとロード
 		scannedKnowledge, err := knowledgeScanService.ScanKnowledge(rootDir, args)
@@ -196,6 +211,44 @@ func runMake(
 		}
 
 		return nil
+	}
+}
+
+// expandTargetsWithDependencies は、依存グラフを使用してターゲットを拡張します。
+func expandTargetsWithDependencies(targets []string, rootDir string, depsGraphRepo depsGraph.Repository) ([]string, error) {
+	graph, err := depsGraphRepo.Read(filepath.Join(rootDir, ".sisho", "deps-graph.json"))
+	if err != nil {
+		return nil, err
+	}
+
+	expandedTargets := make(map[string]struct{})
+	for _, target := range targets {
+		expandDependencies(target, graph, expandedTargets)
+	}
+
+	result := make([]string, 0, len(expandedTargets))
+	for target := range expandedTargets {
+		result = append(result, target)
+	}
+
+	// 依存グラフに基づいてソート
+	sort.Slice(result, func(i, j int) bool {
+		return getDepth(graph, result[i]) > getDepth(graph, result[j])
+	})
+
+	return result, nil
+}
+
+// expandDependencies は、指定されたターゲットの依存関係を再帰的に展開します。
+func expandDependencies(target string, graph depsGraph.DepsGraph, expandedTargets map[string]struct{}) {
+	if _, exists := expandedTargets[target]; exists {
+		return
+	}
+	expandedTargets[target] = struct{}{}
+
+	deps := graph[depsGraph.Dependency(target)]
+	for _, dep := range deps {
+		expandDependencies(string(dep), graph, expandedTargets)
 	}
 }
 
@@ -366,4 +419,25 @@ func write(path string, data []byte) error {
 		return err
 	}
 	return os.WriteFile(path, data, 0644)
+}
+
+// getDepth は、依存グラフにおける指定されたノードの深さを返します。
+func getDepth(g depsGraph.DepsGraph, node string) int {
+	visited := make(map[string]bool)
+	var dfs func(string) int
+	dfs = func(current string) int {
+		if visited[current] {
+			return 0
+		}
+		visited[current] = true
+		maxDepth := 0
+		for _, dep := range g[depsGraph.Dependency(current)] {
+			depDepth := dfs(string(dep))
+			if depDepth > maxDepth {
+				maxDepth = depDepth
+			}
+		}
+		return maxDepth + 1
+	}
+	return dfs(node)
 }
