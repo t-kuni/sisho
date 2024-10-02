@@ -391,6 +391,7 @@ func printDiff(oldContent, newContent string) {
 // getFolderStructure は、指定されたディレクトリのフォルダ構造を取得します。
 func getFolderStructure(rootDir string, fileRepository file.Repository) (string, error) {
 	var structure strings.Builder
+
 	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -413,6 +414,7 @@ func getFolderStructure(rootDir string, fileRepository file.Repository) (string,
 		}
 		return nil
 	})
+
 	if err != nil {
 		return "", err
 	}

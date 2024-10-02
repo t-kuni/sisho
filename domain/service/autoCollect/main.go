@@ -3,6 +3,7 @@ package autoCollect
 import (
 	"github.com/t-kuni/sisho/domain/repository/config"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -25,21 +26,22 @@ func (s *AutoCollectService) CollectAutoCollectFiles(rootDir string, targetPath 
 		return nil, err
 	}
 
-	files, err := s.contextScanService.ContextScan(rootDir, targetPath)
+	var collectedFiles []string
+	targetName := strings.TrimSuffix(filepath.Base(targetPath), filepath.Ext(targetPath))
+
+	err = s.contextScanService.ContextScan(rootDir, targetPath, func(path string, info os.FileInfo) error {
+		baseName := filepath.Base(path)
+		if cfg.AutoCollect.ReadmeMd && baseName == "README.md" {
+			collectedFiles = append(collectedFiles, path)
+		}
+		if cfg.AutoCollect.TargetCodeMd && baseName == targetName+".md" {
+			collectedFiles = append(collectedFiles, path)
+		}
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
-	}
-
-	var collectedFiles []string
-	for _, file := range files {
-		baseName := filepath.Base(file)
-		if cfg.AutoCollect.ReadmeMd && baseName == "README.md" {
-			collectedFiles = append(collectedFiles, file)
-		}
-		targetName := strings.TrimSuffix(filepath.Base(targetPath), filepath.Ext(targetPath))
-		if cfg.AutoCollect.TargetCodeMd && baseName == targetName+".md" {
-			collectedFiles = append(collectedFiles, file)
-		}
 	}
 
 	return collectedFiles, nil

@@ -1,0 +1,3 @@
+knowledge:
+    - path: ../projectScan/main.go
+      kind: examples
