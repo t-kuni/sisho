@@ -316,15 +316,16 @@ UPDATED_CONTENT
 		assert.NoError(t, err)
 	})
 
-	t.Run("連鎖的生成(-cオプション)が正常に動作すること", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+	t.Run("連鎖的生成(-cオプション)について", func(t *testing.T) {
+		t.Run("連鎖的生成(-cオプション)が正常に動作すること", func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
 
-		space := testUtil.BeginTestSpace(t)
-		defer space.CleanUp()
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
 
-		// Setup Files
-		space.WriteFile("sisho.yml", []byte(`
+			// Setup Files
+			space.WriteFile("sisho.yml", []byte(`
 lang: ja
 llm:
     driver: anthropic
@@ -335,56 +336,57 @@ auto-collect:
 additional-knowledge:
     folder-structure: true
 `))
-		space.WriteFile("fiel1.go", []byte("FILE1_CONTENT"))
-		space.WriteFile("fiel2.go", []byte("FILE2_CONTENT"))
-		space.WriteFile("fiel3.go", []byte("FILE3_CONTENT"))
-		space.WriteFile(".sisho/deps-graph.json", []byte(`
+			space.WriteFile("fiel1.go", []byte("FILE1_CONTENT"))
+			space.WriteFile("fiel2.go", []byte("FILE2_CONTENT"))
+			space.WriteFile("fiel3.go", []byte("FILE3_CONTENT"))
+			space.WriteFile(".sisho/deps-graph.json", []byte(`
 {
   "file2.go": [ "file1.go" ],
   "file3.go": [ "file2.go" ]
 }
 `))
 
-		generatedFormat := `
+			generatedFormat := `
 <!-- CODE_BLOCK_BEGIN -->` + "```" + `%s
 UPDATED_CONTENT%d
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
 
-		err := callCommand(mockCtrl, []string{"make", "file3.go", "-ac"}, func(mocks Mocks) {
-			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
-			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
-					//assert.Contains(t, messages[0].Content, "FILE3_CONTENT")
-					return fmt.Sprintf(generatedFormat, "file3.go", 1), nil
-				})
-			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
-					//assert.Contains(t, messages[0].Content, "FILE2_CONTENT")
-					return fmt.Sprintf(generatedFormat, "file2.go", 2), nil
-				})
-			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
-					//assert.Contains(t, messages[0].Content, "FILE1_CONTENT")
-					return fmt.Sprintf(generatedFormat, "file1.go", 3), nil
-				})
-			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
-			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
-		})
-		assert.NoError(t, err)
+			err := callCommand(mockCtrl, []string{"make", "file3.go", "-ac"}, func(mocks Mocks) {
+				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+						//assert.Contains(t, messages[0].Content, "FILE3_CONTENT")
+						return fmt.Sprintf(generatedFormat, "file3.go", 1), nil
+					})
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+						//assert.Contains(t, messages[0].Content, "FILE2_CONTENT")
+						return fmt.Sprintf(generatedFormat, "file2.go", 2), nil
+					})
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+						//assert.Contains(t, messages[0].Content, "FILE1_CONTENT")
+						return fmt.Sprintf(generatedFormat, "file1.go", 3), nil
+					})
+				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			})
+			assert.NoError(t, err)
 
-		// Assert
-		space.AssertFile("file1.go", func(actual []byte) {
-			assert.Equal(t, "UPDATED_CONTENT3", string(actual))
+			// Assert
+			space.AssertFile("file1.go", func(actual []byte) {
+				assert.Equal(t, "UPDATED_CONTENT3", string(actual))
+			})
+			space.AssertFile("file2.go", func(actual []byte) {
+				assert.Equal(t, "UPDATED_CONTENT2", string(actual))
+			})
+			space.AssertFile("file3.go", func(actual []byte) {
+				assert.Equal(t, "UPDATED_CONTENT1", string(actual))
+			})
 		})
-		space.AssertFile("file2.go", func(actual []byte) {
-			assert.Equal(t, "UPDATED_CONTENT2", string(actual))
-		})
-		space.AssertFile("file3.go", func(actual []byte) {
-			assert.Equal(t, "UPDATED_CONTENT1", string(actual))
-		})
+
+		// TODO deps-graphがz存在しない場合
+		// TODO deps-graphに記載のないファイル
 	})
-
-	// TODO deps-graphがz存在しない場合
-	// TODO deps-graphに記載のないファイル
 }
