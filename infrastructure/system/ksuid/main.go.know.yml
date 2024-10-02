@@ -1,3 +1,4 @@
 knowledge:
   - path: ../../../domain/system/ksuid/main.go
     kind: implementations
+    chain-make: true

@@ -1,5 +1,7 @@
 knowledge:
     - path: ../../repository/file/main.go
       kind: implementations
+      chain-make: true
     - path: ../../../infrastructure/repository/file/main.go
       kind: implementations
+      chain-make: true

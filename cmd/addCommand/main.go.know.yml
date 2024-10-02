@@ -1,3 +1,4 @@
 knowledge:
   - path: ../../domain/repository/knowledge/main.go
     kind: implementations
+    chain-make: true

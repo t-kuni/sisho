@@ -1,9 +1,13 @@
 knowledge:
   - path: ../../domain/service/configFindService/main.go
     kind: implementations
+    chain-make: true
   - path: ../../domain/service/projectScan/main.go
     kind: implementations
+    chain-make: true
   - path: ../../domain/repository/knowledge/main.go
     kind: implementations
+    chain-make: true
   - path: ../../domain/repository/depsGraph/main.go
     kind: implementations
+    chain-make: true

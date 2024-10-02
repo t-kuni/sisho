@@ -3,5 +3,4 @@ knowledge:
     kind: specifications
   - path: ../../../domain/external/claude/main.go
     kind: implementations
-  - path: ../claude/main.go
-    kind: examples
+    chain-make: true

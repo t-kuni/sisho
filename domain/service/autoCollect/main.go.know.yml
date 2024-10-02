@@ -1,0 +1,4 @@
+knowledge:
+  - path: ../contextScan/main.go
+    kind: implementations
+    chain-make: true

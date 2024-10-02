@@ -1,7 +1,9 @@
 knowledge:
     - path: ../../domain/repository/config/main.go
       kind: implementations
+      chain-make: true
     - path: ../../infrastructure/repository/config/main.go
       kind: implementations
+      chain-make: true
     - path: ../../domain/model/kinds/main.go
       kind: specifications

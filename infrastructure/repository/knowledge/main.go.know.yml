@@ -1,5 +1,6 @@
 knowledge:
   - path: ../../../domain/repository/knowledge/main.go
     kind: implementations
+    chain-make: true
   - path: ../../../domain/repository/knowledge/README.md
     kind: specifications

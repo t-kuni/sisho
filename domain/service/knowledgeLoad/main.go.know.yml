@@ -1,3 +1,4 @@
 knowledge:
   - path: ../../../domain/model/prompts/main.go
     kind: implementations
+    chain-make: true

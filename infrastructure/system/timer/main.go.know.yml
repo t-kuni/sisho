@@ -1,3 +1,4 @@
 knowledge:
   - path: ../../../domain/system/timer/main.go
     kind: implementations
+    chain-make: true

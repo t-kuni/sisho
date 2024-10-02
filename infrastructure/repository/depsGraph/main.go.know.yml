@@ -1,5 +1,6 @@
 knowledge:
   - path: ../../../domain/repository/depsGraph/main.go
     kind: implementations
+    chain-make: true
   - path: ../../../domain/repository/depsGraph/README.md
     kind: specifications
