@@ -65,6 +65,7 @@ func NewRootCommand() *RootCommand {
 		fileRepo,
 		knowledgeScanSvc,
 		knowledgeLoadSvc,
+		depsGraphRepo,
 		timer.NewTimer(),
 		ksuidGenerator,
 	)

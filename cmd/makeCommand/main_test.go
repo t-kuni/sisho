@@ -386,7 +386,84 @@ UPDATED_CONTENT%d
 			})
 		})
 
-		// TODO deps-graphがz存在しない場合
-		// TODO deps-graphに記載のないファイル
+		t.Run("deps-graphが存在しない場合はエラーを返すこと", func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
+
+			// Setup Files
+			space.WriteFile("sisho.yml", []byte(`
+lang: ja
+llm:
+    driver: anthropic
+    model: claude-3-5-sonnet-20240620
+auto-collect:
+    README.md: true
+    "[TARGET_CODE].md": true
+additional-knowledge:
+    folder-structure: true
+`))
+			space.WriteFile("file1.go", []byte("FILE1_CONTENT"))
+
+			err := callCommand(mockCtrl, []string{"make", "file1.go", "-c"}, func(mocks Mocks) {
+				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+			})
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "deps-graph.json not found")
+		})
+
+		t.Run("deps-graphに記載のないファイルは一番深い深度のTarget Codeとして扱うこと", func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
+
+			// Setup Files
+			space.WriteFile("sisho.yml", []byte(`
+lang: ja
+llm:
+    driver: anthropic
+    model: claude-3-5-sonnet-20240620
+auto-collect:
+    README.md: true
+    "[TARGET_CODE].md": true
+additional-knowledge:
+    folder-structure: true
+`))
+			space.WriteFile("file1.go", []byte("FILE1_CONTENT"))
+			space.WriteFile("file2.go", []byte("FILE2_CONTENT"))
+			space.WriteFile("file3.go", []byte("FILE3_CONTENT"))
+			space.WriteFile(".sisho/deps-graph.json", []byte(`
+{
+  "file2.go": [ "file1.go" ]
+}
+`))
+
+			generatedFormat := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `%s
+UPDATED_CONTENT%d
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+
+			err := callCommand(mockCtrl, []string{"make", "file3.go", "-ac"}, func(mocks Mocks) {
+				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+						return fmt.Sprintf(generatedFormat, "file3.go", 1), nil
+					})
+				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			})
+			assert.NoError(t, err)
+
+			// Assert
+			space.AssertFile("file3.go", func(actual []byte) {
+				assert.Equal(t, "UPDATED_CONTENT1", string(actual))
+			})
+		})
 	})
 }

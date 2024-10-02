@@ -110,6 +110,9 @@ func runMake(
 		if *chainFlag {
 			args, err = expandTargetsWithDependencies(args, rootDir, depsGraphRepo)
 			if err != nil {
+				if os.IsNotExist(err) {
+					return fmt.Errorf("deps-graph.json not found: %v", err)
+				}
 				return err
 			}
 		}
@@ -246,7 +249,11 @@ func expandDependencies(target string, graph depsGraph.DepsGraph, expandedTarget
 	}
 	expandedTargets[target] = struct{}{}
 
-	deps := graph[depsGraph.Dependency(target)]
+	deps, exists := graph[depsGraph.Dependency(target)]
+	if !exists {
+		// ターゲットが依存グラフに存在しない場合は、最も深い深度として扱う
+		return
+	}
 	for _, dep := range deps {
 		expandDependencies(string(dep), graph, expandedTargets)
 	}
@@ -431,7 +438,12 @@ func getDepth(g depsGraph.DepsGraph, node string) int {
 		}
 		visited[current] = true
 		maxDepth := 0
-		for _, dep := range g[depsGraph.Dependency(current)] {
+		deps, exists := g[depsGraph.Dependency(current)]
+		if !exists {
+			// ノードが依存グラフに存在しない場合は、最も深い深度として扱う
+			return 999999 // 十分に大きな値
+		}
+		for _, dep := range deps {
 			depDepth := dfs(string(dep))
 			if depDepth > maxDepth {
 				maxDepth = depDepth
