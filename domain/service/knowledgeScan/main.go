@@ -88,8 +88,7 @@ func (s *KnowledgeScanService) scanKnowledgeKnowYml(rootDir string, targetPath s
 	var knowledgeList []knowledge.Knowledge
 
 	fileName := filepath.Base(targetPath)
-	fileNameWithoutExt := fileName[:len(fileName)-len(filepath.Ext(fileName))]
-	knowYmlPath := filepath.Join(filepath.Dir(targetPath), fileNameWithoutExt+".know.yml")
+	knowYmlPath := filepath.Join(filepath.Dir(targetPath), fileName+".know.yml")
 
 	knowledgeFile, err := s.knowledgeRepo.Read(knowYmlPath)
 	if err == nil {

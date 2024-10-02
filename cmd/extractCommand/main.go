@@ -187,9 +187,7 @@ func extractKnowledgeList(answer string, path string) ([]knowledge.Knowledge, er
 func getKnowledgeListFilePath(path string) string {
 	dir := filepath.Dir(path)
 	fileName := filepath.Base(path)
-	fileExt := filepath.Ext(fileName)
-	fileNameWithoutExt := fileName[:len(fileName)-len(fileExt)]
-	return filepath.Join(dir, fileNameWithoutExt+".know.yml")
+	return filepath.Join(dir, fileName+".know.yml")
 }
 
 func mergeKnowledgeLists(existing, new []knowledge.Knowledge) []knowledge.Knowledge {

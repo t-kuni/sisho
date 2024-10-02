@@ -25,9 +25,7 @@ func BuildPrompt(param PromptParam) (string, error) {
 
 	// Generate the knowledge list file path
 	fileName := filepath.Base(param.Target.Path)
-	fileExt := filepath.Ext(fileName)
-	fileNameWithoutExt := fileName[:len(fileName)-len(fileExt)]
-	param.KnowledgeListPath = filepath.Join(filepath.Dir(param.Target.Path), fileNameWithoutExt+".know.yml")
+	param.KnowledgeListPath = filepath.Join(filepath.Dir(param.Target.Path), fileName+".know.yml")
 
 	var output bytes.Buffer
 	err = tmpl.Execute(&output, param)

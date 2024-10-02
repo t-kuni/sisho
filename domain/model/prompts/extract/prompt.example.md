@@ -354,16 +354,6 @@ func getFolderStructure(rootDir string, fileRepository file.Repository) (string,
 ```
 /sisho
 README.md
-/aaa
-  A.txt
-  A2.txt
-  README.md
-  /bbb
-    B.txt
-    README.md
-    main.go
-  main.go
-  main.know.yml
 /cmd
   /addCommand
     README.md
@@ -475,7 +465,7 @@ knowledge:
         * implementations : 利用可能な実装です。必要に応じて利用してください。
         * specifications : この仕様を満たすように実装してください。
 
-# cmd/makeCommand/main.know.yml
+# cmd/makeCommand/main.go.know.yml
 
 * Target Codeが依存している知識を集めた知識リストファイルです。
 

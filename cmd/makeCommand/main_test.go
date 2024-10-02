@@ -248,7 +248,7 @@ additional-knowledge:
 		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
 
 		space.WriteFile("aaa/bbb/ccc/SPEC.md", []byte("This is SPEC.md"))
-		space.WriteFile("aaa/bbb/ccc/ddd.know.yml", []byte(`
+		space.WriteFile("aaa/bbb/ccc/ddd.txt.know.yml", []byte(`
 knowledge:
   - path: SPEC.md
     kind: specifications
