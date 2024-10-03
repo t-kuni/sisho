@@ -10,6 +10,7 @@ import (
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
+	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
 	"github.com/t-kuni/sisho/domain/service/knowledgeScan"
 	"github.com/t-kuni/sisho/domain/system/ksuid"
@@ -50,6 +51,7 @@ func TestMakeCommand(t *testing.T) {
 		knowledgeScanSvc := knowledgeScan.NewKnowledgeScanService(knowledgeRepo, autoCollectSvc)
 		knowledgeLoadSvc := knowledgeLoad.NewKnowledgeLoadService(knowledgeRepo)
 		mockKsuidGenerator := ksuid.NewMockIKsuid(mockCtrl)
+		folderStructureMakeSvc := folderStructureMake.NewFolderStructureMakeService()
 
 		customizeMocks(Mocks{
 			ClaudeClient:   mockClaudeClient,
@@ -70,6 +72,7 @@ func TestMakeCommand(t *testing.T) {
 			depsGraphRepo,
 			mockTimer,
 			mockKsuidGenerator,
+			folderStructureMakeSvc,
 		)
 
 		rootCmd := &cobra.Command{}

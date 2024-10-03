@@ -2,7 +2,6 @@ package makeCommand
 
 import (
 	"fmt"
-	"github.com/denormal/go-gitignore"
 	"github.com/rotisserie/eris"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/spf13/cobra"
@@ -17,6 +16,7 @@ import (
 	"github.com/t-kuni/sisho/domain/repository/depsGraph"
 	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
+	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
 	"github.com/t-kuni/sisho/domain/service/knowledgeScan"
 	"github.com/t-kuni/sisho/domain/system/ksuid"
@@ -50,6 +50,7 @@ func NewMakeCommand(
 	depsGraphRepo depsGraph.Repository,
 	timer timer.ITimer,
 	ksuidGenerator ksuid.IKsuid,
+	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
 ) *MakeCommand {
 	var promptFlag bool
 	var applyFlag bool
@@ -61,7 +62,7 @@ func NewMakeCommand(
 		Long:  `Generate files at the specified paths using LLM based on the knowledge sets.`,
 		Args:  cobra.MinimumNArgs(1),
 		RunE: runMake(&promptFlag, &applyFlag, &chainFlag, claudeClient, openAiClient, configFindService, configRepository,
-			fileRepository, knowledgeScanService, knowledgeLoadService, depsGraphRepo, timer, ksuidGenerator),
+			fileRepository, knowledgeScanService, knowledgeLoadService, depsGraphRepo, timer, ksuidGenerator, folderStructureMakeService),
 	}
 
 	cmd.Flags().BoolVarP(&promptFlag, "prompt", "p", false, "Open editor for additional instructions")
@@ -92,6 +93,7 @@ func runMake(
 	depsGraphRepo depsGraph.Repository,
 	timer timer.ITimer,
 	ksuidGenerator ksuid.IKsuid,
+	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
 ) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		// 設定ファイルの読み込み
@@ -179,7 +181,7 @@ func runMake(
 			if i == 0 {
 				folderStructure := ""
 				if cfg.AdditionalKnowledge.FolderStructure {
-					folderStructure, err = getFolderStructure(rootDir, fileRepository)
+					folderStructure, err = folderStructureMakeService.MakeTree(rootDir)
 					if err != nil {
 						return eris.Wrap(err, "failed to get folder structure")
 					}
@@ -399,65 +401,6 @@ func printDiff(oldContent, newContent string) {
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(oldContent, newContent, false)
 	fmt.Println(dmp.DiffPrettyText(diffs))
-}
-
-// getFolderStructure は、指定されたディレクトリのフォルダ構造を取得します。
-func getFolderStructure(rootDir string, fileRepository file.Repository) (string, error) {
-	var structure strings.Builder
-
-	ignorePath := filepath.Join(rootDir, ".sishoignore")
-	ignoreExists := true
-	if _, err := os.Stat(ignorePath); os.IsNotExist(err) {
-		ignoreExists = false
-	}
-
-	var ignoreFile gitignore.GitIgnore
-	if ignoreExists {
-		var err error
-		ignoreFile, err = gitignore.NewFromFile(ignorePath)
-		if err != nil {
-			return "", eris.Wrap(err, "failed to create gitignore repository")
-		}
-	}
-
-	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relPath, err := filepath.Rel(rootDir, path)
-		if err != nil {
-			return err
-		}
-
-		// .sishoignoreに記載されているファイル・フォルダはスキップ
-		if relPath != "." && ignoreExists && ignoreFile.Ignore(relPath) {
-			if info.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		if info.IsDir() && strings.HasPrefix(info.Name(), ".") {
-			return filepath.SkipDir
-		}
-		if !info.IsDir() && strings.HasPrefix(info.Name(), ".") {
-			return nil
-		}
-
-		indent := strings.Repeat("  ", strings.Count(relPath, string(os.PathSeparator)))
-		if info.IsDir() {
-			structure.WriteString(fmt.Sprintf("%s/%s\n", indent, info.Name()))
-		} else {
-			structure.WriteString(fmt.Sprintf("%s%s\n", indent, info.Name()))
-		}
-		return nil
-	})
-
-	if err != nil {
-		return "", eris.Wrap(err, "failed to walk directory")
-	}
-	return structure.String(), nil
 }
 
 // write は、指定されたパスにデータを書き込みます。

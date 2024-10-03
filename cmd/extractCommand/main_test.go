@@ -7,6 +7,7 @@ import (
 	"github.com/t-kuni/sisho/domain/external/openAi"
 	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
+	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
 	config2 "github.com/t-kuni/sisho/infrastructure/repository/config"
 	knowledge2 "github.com/t-kuni/sisho/infrastructure/repository/knowledge"
 	"github.com/t-kuni/sisho/testUtil"
@@ -32,6 +33,7 @@ func TestExtractCommand(t *testing.T) {
 		configRepo := config2.NewConfigRepository()
 		knowledgeRepo := knowledge2.NewRepository()
 		configFindSvc := configFindService.NewConfigFindService(mockFileRepo)
+		folderStructureMakeSvc := folderStructureMake.NewFolderStructureMakeService()
 
 		customizeMocks(Mocks{
 			ClaudeClient:   mockClaudeClient,
@@ -46,6 +48,7 @@ func TestExtractCommand(t *testing.T) {
 			configRepo,
 			mockFileRepo,
 			knowledgeRepo,
+			folderStructureMakeSvc,
 		)
 
 		rootCmd := &cobra.Command{}
@@ -211,57 +214,52 @@ knowledge:
 		assert.Contains(t, capturedPrompt, "file2.go")
 	})
 
-	//	t.Run("正常系: .sishoignoreに記載されたファイルがフォルダ構造情報から除外されること", func(t *testing.T) {
-	//		mockCtrl := gomock.NewController(t)
-	//		defer mockCtrl.Finish()
-	//
-	//		space := testUtil.BeginTestSpace(t)
-	//		defer space.CleanUp()
-	//
-	//		// Setup Files
-	//		space.WriteFile("sisho.yml", []byte(`
-	//lang: ja
-	//llm:
-	//    driver: anthropic
-	//    model: claude-3-5-sonnet-20240620
-	//additional-knowledge:
-	//    folder-structure: true
-	//`))
-	//		space.WriteFile("target.go", []byte("package main\n\nfunc main() {}"))
-	//		space.WriteFile("dir1/file1.go", []byte(""))
-	//		space.WriteFile("dir2/subdir/file2.go", []byte(""))
-	//		space.WriteFile("ignore_this.txt", []byte(""))
-	//		space.WriteFile(".sishoignore", []byte("ignore_this.txt\ndir2"))
-	//
-	//		generatedKnowledge := `
-	//<!-- CODE_BLOCK_BEGIN -->` + "```" + `target.go.know.yml
-	//knowledge:
-	//  - path: some/path/file1.go
-	//    kind: examples
-	//` + "```" + `<!-- CODE_BLOCK_END -->
-	//`
-	//
-	//		var capturedPrompt string
-	//
-	//		err := callCommand(mockCtrl, []string{"extract", "target.go"}, func(mocks Mocks) {
-	//			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-	//				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
-	//					capturedPrompt = messages[0].Content
-	//					return generatedKnowledge, nil
-	//				})
-	//			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
-	//		})
-	//
-	//		assert.NoError(t, err)
-	//
-	//		// Assert folder structure in the prompt
-	//		assert.Contains(t, capturedPrompt, "# Folder Structure")
-	//		assert.Contains(t, capturedPrompt, "target.go")
-	//		assert.Contains(t, capturedPrompt, "/dir1")
-	//		assert.Contains(t, capturedPrompt, "file1.go")
-	//		assert.NotContains(t, capturedPrompt, "ignore_this.txt")
-	//		assert.NotContains(t, capturedPrompt, "/dir2")
-	//		assert.NotContains(t, capturedPrompt, "/subdir")
-	//		assert.NotContains(t, capturedPrompt, "file2.go")
-	//	})
+	t.Run(".sishoignoreに記載されたファイルがフォルダ構造情報から除外されること", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		space := testUtil.BeginTestSpace(t)
+		defer space.CleanUp()
+
+		// Setup Files
+		space.WriteFile("sisho.yml", []byte(`
+lang: ja
+llm:
+   driver: anthropic
+   model: claude-3-5-sonnet-20240620
+additional-knowledge:
+   folder-structure: true
+`))
+		space.WriteFile("target.go", []byte("package main\n\nfunc main() {}"))
+		space.WriteFile("dir1/file1.go", []byte(""))
+		space.WriteFile("dir2/subdir/file2.go", []byte(""))
+		space.WriteFile("ignore_this.txt", []byte(""))
+		space.WriteFile(".sishoignore", []byte("ignore_this.txt\ndir2"))
+
+		generatedKnowledge := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `target.go.know.yml
+knowledge:
+ - path: some/path/file1.go
+   kind: examples
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+
+		err := callCommand(mockCtrl, []string{"extract", "target.go"}, func(mocks Mocks) {
+			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+					assert.Contains(t, messages[0].Content, "# Folder Structure")
+					assert.Contains(t, messages[0].Content, "target.go")
+					assert.Contains(t, messages[0].Content, "/dir1")
+					assert.Contains(t, messages[0].Content, "file1.go")
+					assert.NotContains(t, messages[0].Content, "ignore_this.txt")
+					assert.NotContains(t, messages[0].Content, "/dir2")
+					assert.NotContains(t, messages[0].Content, "/subdir")
+					assert.NotContains(t, messages[0].Content, "file2.go")
+					return generatedKnowledge, nil
+				})
+			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+		})
+
+		assert.NoError(t, err)
+	})
 }

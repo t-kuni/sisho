@@ -44,9 +44,7 @@ command make [path1], [path2]...
 * Target Codeに対する単一ファイル知識リストファイル（`[ファイル名].know.yml`）を読み込む
 * フォルダ構造情報について
   * プロジェクトコンフィグの設定に応じてフォルダ構造情報をプロンプトに追加する
-  * .sishoignoreにマッチするファイルやフォルダはプロンプトに含めない
-    * .sishoignoreが存在しない場合は.sishoignoreに基づくスキップは行わない
-    * .gitignoreは考慮しなくてよい
+  * folderStructureMakeを使う
 * 使用するLLMのサービスとモデルはプロジェクトコンフィグのllmで指定できる
   * 使用するLLMのサービスとモデルの情報を標準出力に出力する
 * Target Codeの一覧を標準出力に出力する

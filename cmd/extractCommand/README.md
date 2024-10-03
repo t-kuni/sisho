@@ -20,6 +20,8 @@ command extract [path]
   * domain/model/prompts/extract/main.goを使ってプロンプトを生成する
   * LLMにプロンプトを送信する
   * LLMの回答にCapturable Code Blockで`[ファイル名].know.yml`の内容が含まれるので、これを切り出した結果を知識リストとする
+* フォルダ構造情報をプロンプトに追加する
+  * folderStructureMakeを使う
 
 
 ## extractKnowledgeList()

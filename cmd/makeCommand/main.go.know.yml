@@ -38,6 +38,9 @@ knowledge:
     - path: ../../domain/service/contextScan/main.go
       kind: implementations
       chain-make: true
+    - path: ../../domain/service/folderStructureMake/main.go
+      kind: implementations
+      chain-make: true
     - path: ../../domain/repository/depsGraph/main.go
       kind: implementations
       chain-make: true

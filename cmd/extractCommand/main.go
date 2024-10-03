@@ -2,6 +2,7 @@ package extractCommand
 
 import (
 	"fmt"
+	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 	"github.com/t-kuni/sisho/domain/external/claude"
 	"github.com/t-kuni/sisho/domain/external/openAi"
@@ -14,11 +15,11 @@ import (
 	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
+	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 )
 
 type ExtractCommand struct {
@@ -32,6 +33,7 @@ func NewExtractCommand(
 	configRepository config.Repository,
 	fileRepository file.Repository,
 	knowledgeRepository knowledge.Repository,
+	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
 ) *ExtractCommand {
 	cmd := &cobra.Command{
 		Use:   "extract [path]",
@@ -39,7 +41,7 @@ func NewExtractCommand(
 		Long:  `Extract knowledge list from the specified Target Code and generate or update a knowledge list file.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runExtract(args[0], claudeClient, openAiClient, configFindService, configRepository, fileRepository, knowledgeRepository)
+			return runExtract(args[0], claudeClient, openAiClient, configFindService, configRepository, fileRepository, knowledgeRepository, folderStructureMakeService)
 		},
 	}
 
@@ -56,22 +58,23 @@ func runExtract(
 	configRepository config.Repository,
 	fileRepository file.Repository,
 	knowledgeRepository knowledge.Repository,
+	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
 ) error {
 	configPath, err := configFindService.FindConfig()
 	if err != nil {
-		return err
+		return eris.Wrap(err, "failed to find config file")
 	}
 
 	cfg, err := configRepository.Read(configPath)
 	if err != nil {
-		return err
+		return eris.Wrap(err, "failed to read config file")
 	}
 
 	rootDir := configFindService.GetProjectRoot(configPath)
 
 	targetContent, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return eris.Wrapf(err, "failed to read file: %s", path)
 	}
 
 	target := prompts.Target{
@@ -79,9 +82,9 @@ func runExtract(
 		Content: string(targetContent),
 	}
 
-	folderStructure, err := getFolderStructure(rootDir, fileRepository)
+	folderStructure, err := folderStructureMakeService.MakeTree(rootDir)
 	if err != nil {
-		return err
+		return eris.Wrap(err, "failed to get folder structure")
 	}
 
 	prompt, err := extract.BuildPrompt(extract.PromptParam{
@@ -89,7 +92,7 @@ func runExtract(
 		FolderStructure: folderStructure,
 	})
 	if err != nil {
-		return err
+		return eris.Wrap(err, "failed to build prompt")
 	}
 
 	var chatClient chat.Chat
@@ -99,17 +102,17 @@ func runExtract(
 	case "anthropic":
 		chatClient = modelClaude.NewClaudeChat(claudeClient)
 	default:
-		return fmt.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
+		return eris.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
 	}
 
 	answer, err := chatClient.Send(prompt, cfg.LLM.Model)
 	if err != nil {
-		return err
+		return eris.Wrap(err, "failed to send message to LLM")
 	}
 
 	knowledgeList, err := extractKnowledgeList(answer, path)
 	if err != nil {
-		return err
+		return eris.Wrap(err, "failed to extract knowledge list")
 	}
 
 	knowledgeFilePath := getKnowledgeListFilePath(path)
@@ -120,41 +123,11 @@ func runExtract(
 
 	err = knowledgeRepository.Write(knowledgeFilePath, knowledge.KnowledgeFile{KnowledgeList: knowledgeList})
 	if err != nil {
-		return err
+		return eris.Wrapf(err, "failed to write knowledge file: %s", knowledgeFilePath)
 	}
 
 	fmt.Printf("Knowledge list extracted and saved to: %s\n", knowledgeFilePath)
 	return nil
-}
-
-func getFolderStructure(rootDir string, fileRepository file.Repository) (string, error) {
-	var structure strings.Builder
-	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() && strings.HasPrefix(info.Name(), ".") {
-			return filepath.SkipDir
-		}
-		if !info.IsDir() && strings.HasPrefix(info.Name(), ".") {
-			return nil
-		}
-		relPath, err := filepath.Rel(rootDir, path)
-		if err != nil {
-			return err
-		}
-		indent := strings.Repeat("  ", strings.Count(relPath, string(os.PathSeparator)))
-		if info.IsDir() {
-			structure.WriteString(fmt.Sprintf("%s/%s\n", indent, info.Name()))
-		} else {
-			structure.WriteString(fmt.Sprintf("%s%s\n", indent, info.Name()))
-		}
-		return nil
-	})
-	if err != nil {
-		return "", err
-	}
-	return structure.String(), nil
 }
 
 func extractKnowledgeList(answer string, path string) ([]knowledge.Knowledge, error) {
@@ -162,7 +135,7 @@ func extractKnowledgeList(answer string, path string) ([]knowledge.Knowledge, er
 	matches := re.FindStringSubmatch(answer)
 
 	if len(matches) < 3 {
-		return nil, fmt.Errorf("no knowledge list found in the answer")
+		return nil, eris.New("no knowledge list found in the answer")
 	}
 
 	yamlContent := matches[2]
@@ -170,13 +143,13 @@ func extractKnowledgeList(answer string, path string) ([]knowledge.Knowledge, er
 	var knowledgeFile knowledge.KnowledgeFile
 	err := yaml.Unmarshal([]byte(yamlContent), &knowledgeFile)
 	if err != nil {
-		return nil, err
+		return nil, eris.Wrap(err, "failed to unmarshal YAML content")
 	}
 
 	for i, k := range knowledgeFile.KnowledgeList {
 		relPath, err := filepath.Rel(filepath.Dir(path), k.Path)
 		if err != nil {
-			return nil, err
+			return nil, eris.Wrapf(err, "failed to get relative path for: %s", k.Path)
 		}
 		knowledgeFile.KnowledgeList[i].Path = relPath
 	}
