@@ -5,7 +5,6 @@ import (
 	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type AutoCollectService struct {
@@ -27,21 +26,26 @@ func (s *AutoCollectService) CollectAutoCollectFiles(rootDir string, targetPath 
 	}
 
 	var collectedFiles []string
-	targetName := strings.TrimSuffix(filepath.Base(targetPath), filepath.Ext(targetPath))
 
-	err = s.contextScanService.ContextScan(rootDir, targetPath, func(path string, info os.FileInfo) error {
-		baseName := filepath.Base(path)
-		if cfg.AutoCollect.ReadmeMd && baseName == "README.md" {
-			collectedFiles = append(collectedFiles, path)
+	// README.mdの収集
+	if cfg.AutoCollect.ReadmeMd {
+		err = s.contextScanService.ContextScan(rootDir, targetPath, func(path string, info os.FileInfo) error {
+			if filepath.Base(path) == "README.md" {
+				collectedFiles = append(collectedFiles, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
-		if cfg.AutoCollect.TargetCodeMd && baseName == targetName+".md" {
-			collectedFiles = append(collectedFiles, path)
-		}
-		return nil
-	})
+	}
 
-	if err != nil {
-		return nil, err
+	// [TARGET_CODE].mdの収集
+	if cfg.AutoCollect.TargetCodeMd {
+		targetMdPath := filepath.Join(filepath.Dir(targetPath), filepath.Base(targetPath)+".md")
+		if _, err := os.Stat(targetMdPath); err == nil {
+			collectedFiles = append(collectedFiles, targetMdPath)
+		}
 	}
 
 	return collectedFiles, nil

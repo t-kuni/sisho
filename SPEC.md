@@ -48,8 +48,9 @@ additional-knowledge:
   * kindはspecificationsとして扱う
 * "[TARGET_CODE].md"
   * bool型
-  * trueの場合、コンテキストスキャンを用いて、各階層の[TARGET_CODE].mdをknowledgeとしてLLMに提示する
-  * [TARGET_CODE]はTarget Codeのファイル名を指す
+  * trueの場合、Target Codeと同階層の[TARGET_CODE].mdをknowledgeとしてLLMに提示する
+  * 例えば、Target Codeが`aaa/bbb/main.go` の場合、`aaa/bbb/main.go.md` が対象となる 
+    * ただし、 `aaa/main.go.md` は対象外なので注意
   * kindはspecificationsとして扱う
 
 ## additional-knowledge.folder-structureについて

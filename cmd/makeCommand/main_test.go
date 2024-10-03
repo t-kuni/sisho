@@ -297,7 +297,7 @@ additional-knowledge:
    folder-structure: true
 `))
 		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
-		space.WriteFile("aaa/bbb/ccc/ddd.md", []byte("This is ddd.md"))
+		space.WriteFile("aaa/bbb/ccc/ddd.txt.md", []byte("This is ddd.txt.md"))
 
 		generated := `
 <!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
@@ -309,8 +309,50 @@ UPDATED_CONTENT
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
 					content := messages[0].Content
-					assert.Contains(t, content, "aaa/bbb/ccc/ddd.md")
-					assert.Contains(t, content, "This is ddd.md")
+					assert.Contains(t, content, "aaa/bbb/ccc/ddd.txt.md")
+					assert.Contains(t, content, "This is ddd.txt.md")
+					return generated, nil
+				})
+			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+		})
+		assert.NoError(t, err)
+	})
+
+	t.Run("Target Codeと同階層ではない[TARGET_CODE].mdは無視されること", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		space := testUtil.BeginTestSpace(t)
+		defer space.CleanUp()
+
+		// Setup Files
+		space.WriteFile("sisho.yml", []byte(`
+lang: ja
+llm:
+   driver: anthropic
+   model: claude-3-5-sonnet-20240620
+auto-collect:
+   README.md: true
+   "[TARGET_CODE].md": true
+additional-knowledge:
+   folder-structure: true
+`))
+		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+		space.WriteFile("aaa/bbb/ddd.txt.md", []byte("This is ddd.txt.md"))
+
+		generated := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+					content := messages[0].Content
+					assert.NotContains(t, content, "aaa/bbb/ddd.txt.md")
+					assert.NotContains(t, content, "This is ddd.txt.md")
 					return generated, nil
 				})
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
