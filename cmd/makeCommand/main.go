@@ -1,8 +1,9 @@
 package makeCommand
 
 import (
-	"errors"
 	"fmt"
+	"github.com/denormal/go-gitignore"
+	"github.com/rotisserie/eris"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/spf13/cobra"
 	"github.com/t-kuni/sisho/domain/external/claude"
@@ -96,12 +97,12 @@ func runMake(
 		// 設定ファイルの読み込み
 		configPath, err := configFindService.FindConfig()
 		if err != nil {
-			return err
+			return eris.Wrap(err, "failed to find config file")
 		}
 
 		cfg, err := configRepository.Read(configPath)
 		if err != nil {
-			return err
+			return eris.Wrap(err, "failed to read config file")
 		}
 
 		rootDir := configFindService.GetProjectRoot(configPath)
@@ -111,21 +112,21 @@ func runMake(
 			args, err = expandTargetsWithDependencies(args, rootDir, depsGraphRepo)
 			if err != nil {
 				if os.IsNotExist(err) {
-					return fmt.Errorf("deps-graph.json not found: %v", err)
+					return eris.Wrap(err, "deps-graph.json not found")
 				}
-				return err
+				return eris.Wrap(err, "failed to expand targets with dependencies")
 			}
 		}
 
 		// 知識のスキャンとロード
 		scannedKnowledge, err := knowledgeScanService.ScanKnowledge(rootDir, args)
 		if err != nil {
-			return err
+			return eris.Wrap(err, "failed to scan knowledge")
 		}
 
 		knowledgeSets, err := knowledgeLoadService.LoadKnowledge(rootDir, scannedKnowledge)
 		if err != nil {
-			return err
+			return eris.Wrap(err, "failed to load knowledge")
 		}
 
 		// 追加の指示の取得
@@ -133,7 +134,7 @@ func runMake(
 		if *promptFlag {
 			instructions, err = getAdditionalInstructions()
 			if err != nil {
-				return err
+				return eris.Wrap(err, "failed to get additional instructions")
 			}
 			fmt.Println("Additional instructions:")
 			fmt.Println(instructions)
@@ -149,7 +150,7 @@ func runMake(
 		case "anthropic":
 			chat = modelClaude.NewClaudeChat(claudeClient)
 		default:
-			return fmt.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
+			return eris.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
 		}
 
 		fmt.Printf("Using LLM: %s with model: %s\n", cfg.LLM.Driver, cfg.LLM.Model)
@@ -157,14 +158,14 @@ func runMake(
 		// 履歴ディレクトリの作成
 		historyDir, err := createHistoryDir(rootDir, timer, ksuidGenerator)
 		if err != nil {
-			return err
+			return eris.Wrap(err, "failed to create history directory")
 		}
 
 		// 各ターゲットに対する処理
 		for i, path := range args {
 			target, err := readTarget(path, fileRepository)
 			if err != nil {
-				return err
+				return eris.Wrapf(err, "failed to read target: %s", path)
 			}
 
 			var prompt string
@@ -173,7 +174,7 @@ func runMake(
 				if cfg.AdditionalKnowledge.FolderStructure {
 					folderStructure, err = getFolderStructure(rootDir, fileRepository)
 					if err != nil {
-						return err
+						return eris.Wrap(err, "failed to get folder structure")
 					}
 				}
 
@@ -189,23 +190,23 @@ func runMake(
 				})
 			}
 			if err != nil {
-				return err
+				return eris.Wrap(err, "failed to build prompt")
 			}
 
 			answer, err := chat.Send(prompt, cfg.LLM.Model)
 			if err != nil {
-				return err
+				return eris.Wrap(err, "failed to send message to LLM")
 			}
 
 			err = saveHistory(historyDir, prompt, answer)
 			if err != nil {
-				return err
+				return eris.Wrap(err, "failed to save history")
 			}
 
 			if *applyFlag {
 				err = applyChanges(path, answer, fileRepository)
 				if err != nil {
-					return err
+					return eris.Wrapf(err, "failed to apply changes to %s", path)
 				}
 				fmt.Printf("Applied changes to %s\n", path)
 			} else {
@@ -221,7 +222,7 @@ func runMake(
 func expandTargetsWithDependencies(targets []string, rootDir string, depsGraphRepo depsGraph.Repository) ([]string, error) {
 	graph, err := depsGraphRepo.Read(filepath.Join(rootDir, ".sisho", "deps-graph.json"))
 	if err != nil {
-		return nil, err
+		return nil, eris.Wrap(err, "failed to read deps-graph.json")
 	}
 
 	expandedTargets := make(map[string]struct{})
@@ -268,7 +269,7 @@ func getAdditionalInstructions() (string, error) {
 
 	tempFile, err := os.CreateTemp("", "sisho-instructions-*.md")
 	if err != nil {
-		return "", err
+		return "", eris.Wrap(err, "failed to create temporary file")
 	}
 	defer os.Remove(tempFile.Name())
 
@@ -279,12 +280,12 @@ func getAdditionalInstructions() (string, error) {
 
 	err = cmd.Run()
 	if err != nil {
-		return "", err
+		return "", eris.Wrap(err, "failed to run editor")
 	}
 
 	instructions, err := os.ReadFile(tempFile.Name())
 	if err != nil {
-		return "", err
+		return "", eris.Wrap(err, "failed to read instructions from temporary file")
 	}
 
 	return strings.TrimSpace(string(instructions)), nil
@@ -306,7 +307,7 @@ func readTarget(path string, fileRepository file.Repository) (prompts.Target, er
 	content, err := os.ReadFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return prompts.Target{}, err
+			return prompts.Target{}, eris.Wrapf(err, "failed to read file: %s", path)
 		}
 		content = []byte{}
 	}
@@ -322,20 +323,20 @@ func createHistoryDir(rootDir string, timer timer.ITimer, ksuidGenerator ksuid.I
 	historyBaseDir := filepath.Join(rootDir, ".sisho", "history")
 	err := os.MkdirAll(historyBaseDir, 0755)
 	if err != nil {
-		return "", err
+		return "", eris.Wrap(err, "failed to create history base directory")
 	}
 
 	id := ksuidGenerator.New()
 	historyDir := filepath.Join(historyBaseDir, id)
 	err = os.Mkdir(historyDir, 0755)
 	if err != nil {
-		return "", err
+		return "", eris.Wrap(err, "failed to create history directory")
 	}
 
 	timeFile := filepath.Join(historyDir, timer.Now().Format("2006-01-02T15:04:05"))
 	_, err = os.Create(timeFile)
 	if err != nil {
-		return "", err
+		return "", eris.Wrap(err, "failed to create time file")
 	}
 
 	return historyDir, nil
@@ -345,10 +346,15 @@ func createHistoryDir(rootDir string, timer timer.ITimer, ksuidGenerator ksuid.I
 func saveHistory(historyDir, prompt, answer string) error {
 	err := os.WriteFile(filepath.Join(historyDir, "prompt.md"), []byte(prompt), 0644)
 	if err != nil {
-		return err
+		return eris.Wrap(err, "failed to write prompt to history")
 	}
 
-	return os.WriteFile(filepath.Join(historyDir, "answer.md"), []byte(answer), 0644)
+	err = os.WriteFile(filepath.Join(historyDir, "answer.md"), []byte(answer), 0644)
+	if err != nil {
+		return eris.Wrap(err, "failed to write answer to history")
+	}
+
+	return nil
 }
 
 // applyChanges は、LLMの出力をファイルに適用します。
@@ -359,20 +365,20 @@ func applyChanges(path, answer string, fileRepository file.Repository) error {
 	matches := re.FindStringSubmatch(answer)
 
 	if len(matches) < 4 {
-		return errors.New("no code block found in the answer")
+		return eris.New("no code block found in the answer")
 	}
 
 	newContent := strings.TrimSpace(matches[2])
 
 	oldContent, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
-		return err
+		return eris.Wrapf(err, "failed to read file: %s", path)
 	}
 
 	if string(oldContent) != newContent {
 		err = write(path, []byte(newContent))
 		if err != nil {
-			return err
+			return eris.Wrapf(err, "failed to write file: %s", path)
 		}
 
 		printDiff(string(oldContent), newContent)
@@ -392,20 +398,46 @@ func printDiff(oldContent, newContent string) {
 func getFolderStructure(rootDir string, fileRepository file.Repository) (string, error) {
 	var structure strings.Builder
 
+	ignorePath := filepath.Join(rootDir, ".sishoignore")
+	ignoreExists := true
+	if _, err := os.Stat(ignorePath); os.IsNotExist(err) {
+		ignoreExists = false
+	}
+
+	var ignoreFile gitignore.GitIgnore
+	if ignoreExists {
+		var err error
+		ignoreFile, err = gitignore.NewFromFile(ignorePath)
+		if err != nil {
+			return "", eris.Wrap(err, "failed to create gitignore repository")
+		}
+	}
+
 	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
+
+		relPath, err := filepath.Rel(rootDir, path)
+		if err != nil {
+			return err
+		}
+
+		// .sishoignoreに記載されているファイル・フォルダはスキップ
+		if relPath != "." && ignoreExists && ignoreFile.Ignore(relPath) {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
 		if info.IsDir() && strings.HasPrefix(info.Name(), ".") {
 			return filepath.SkipDir
 		}
 		if !info.IsDir() && strings.HasPrefix(info.Name(), ".") {
 			return nil
 		}
-		relPath, err := filepath.Rel(rootDir, path)
-		if err != nil {
-			return err
-		}
+
 		indent := strings.Repeat("  ", strings.Count(relPath, string(os.PathSeparator)))
 		if info.IsDir() {
 			structure.WriteString(fmt.Sprintf("%s/%s\n", indent, info.Name()))
@@ -416,7 +448,7 @@ func getFolderStructure(rootDir string, fileRepository file.Repository) (string,
 	})
 
 	if err != nil {
-		return "", err
+		return "", eris.Wrap(err, "failed to walk directory")
 	}
 	return structure.String(), nil
 }
@@ -425,9 +457,9 @@ func getFolderStructure(rootDir string, fileRepository file.Repository) (string,
 func write(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return err
+		return eris.Wrapf(err, "failed to create directory: %s", dir)
 	}
-	return os.WriteFile(path, data, 0644)
+	return eris.Wrapf(os.WriteFile(path, data, 0644), "failed to write file: %s", path)
 }
 
 // getDepth は、依存グラフにおける指定されたノードの深さを返します。

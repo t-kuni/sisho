@@ -412,7 +412,7 @@ additional-knowledge:
 			})
 
 			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "deps-graph.json not found")
+			assert.Contains(t, err.Error(), "failed to read deps-graph.json")
 		})
 
 		t.Run("deps-graphに記載のないファイルは一番深い深度のTarget Codeとして扱うこと", func(t *testing.T) {
@@ -464,6 +464,107 @@ UPDATED_CONTENT%d
 			space.AssertFile("file3.go", func(actual []byte) {
 				assert.Equal(t, "UPDATED_CONTENT1", string(actual))
 			})
+		})
+	})
+
+	t.Run("フォルダ構成情報のプロンプト出力について", func(t *testing.T) {
+		t.Run("正しく出力されること", func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
+
+			// Setup Files
+			space.WriteFile("sisho.yml", []byte(`
+lang: ja
+llm:
+    driver: anthropic
+    model: claude-3-5-sonnet-20240620
+auto-collect:
+    README.md: true
+    "[TARGET_CODE].md": true
+additional-knowledge:
+    folder-structure: true
+`))
+			space.WriteFile("file1.go", []byte("FILE1_CONTENT"))
+			space.WriteFile("dir1/file2.go", []byte("FILE2_CONTENT"))
+			space.WriteFile("dir1/dir2/file3.go", []byte("FILE3_CONTENT"))
+
+			generated := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `file1.go
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+
+			err := callCommand(mockCtrl, []string{"make", "file1.go", "-a"}, func(mocks Mocks) {
+				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+						content := messages[0].Content
+						assert.Contains(t, content, "# Folder Structure")
+						assert.Contains(t, content, "file1.go")
+						assert.Contains(t, content, "/dir1")
+						assert.Contains(t, content, "file2.go")
+						assert.Contains(t, content, "/dir2")
+						assert.Contains(t, content, "file3.go")
+						return generated, nil
+					})
+				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			})
+			assert.NoError(t, err)
+		})
+
+		t.Run(".sishoignoreに記載のあるファイルは無視されること", func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
+
+			// Setup Files
+			space.WriteFile("sisho.yml", []byte(`
+lang: ja
+llm:
+    driver: anthropic
+    model: claude-3-5-sonnet-20240620
+auto-collect:
+    README.md: true
+    "[TARGET_CODE].md": true
+additional-knowledge:
+    folder-structure: true
+`))
+			space.WriteFile("file1.go", []byte("FILE1_CONTENT"))
+			space.WriteFile("dir1/file2.go", []byte("FILE2_CONTENT"))
+			space.WriteFile("dir1/dir2/file3.go", []byte("FILE3_CONTENT"))
+			space.WriteFile("ignore_this.txt", []byte("IGNORE_CONTENT"))
+			space.WriteFile(".sishoignore", []byte("ignore_this.txt\ndir1/dir2"))
+
+			generated := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `file1.go
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+
+			err := callCommand(mockCtrl, []string{"make", "file1.go", "-a"}, func(mocks Mocks) {
+				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+						content := messages[0].Content
+						assert.Contains(t, content, "# Folder Structure")
+						assert.Contains(t, content, "file1.go")
+						assert.Contains(t, content, "/dir1")
+						assert.Contains(t, content, "file2.go")
+						assert.NotContains(t, content, "ignore_this.txt")
+						assert.NotContains(t, content, "/dir2")
+						assert.NotContains(t, content, "file3.go")
+						return generated, nil
+					})
+				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			})
+			assert.NoError(t, err)
 		})
 	})
 }
