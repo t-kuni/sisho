@@ -30,17 +30,21 @@ knowledge:
       kind: examples
     - path: models/User.php
       kind: implementations
+      chain-make: true
     - path: controllers/README.md
       kind: specifications
 ```
 
 * path
-    * 対象ファイルまのパスを指定します
+    * 対象ファイルまでのパスを指定します
 * kind
     * 指定可能な値とその意味
         * examples : コード例です。これを参考にして実装を進めてください。
         * implementations : 利用可能な実装です。必要に応じて利用してください。
         * specifications : この仕様を満たすように実装してください。
+* chain-make
+    * pathで指定されたファイルが修正された場合、このファイルにも修正を行います。
+    * 省略可能です。省略した場合はfalseとして扱います。
 
 # {{ .KnowledgeListPath }}
 

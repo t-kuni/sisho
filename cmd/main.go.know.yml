@@ -7,14 +7,6 @@ knowledge:
       kind: implementations
     - path: makeCommand/main.go
       kind: implementations
-    - path: ../domain/model/kinds/main.go
-      kind: implementations
-    - path: ../domain/model/prompts/main.go
-      kind: implementations
-    - path: ../domain/model/prompts/extract/main.go
-      kind: implementations
-    - path: ../domain/model/prompts/oneMoreMake/main.go
-      kind: implementations
     - path: ../domain/repository/config/main.go
       kind: implementations
     - path: ../domain/repository/file/main.go
@@ -40,4 +32,14 @@ knowledge:
     - path: ../infrastructure/repository/file/main.go
       kind: implementations
     - path: ../infrastructure/repository/knowledge/main.go
+      kind: implementations
+    - path: depsGraphCommand/main.go
+      kind: implementations
+    - path: ../domain/service/projectScan/main.go
+      kind: implementations
+    - path: ../infrastructure/repository/depsGraph/main.go
+      kind: implementations
+    - path: ../infrastructure/system/ksuid/main.go
+      kind: implementations
+    - path: ../infrastructure/system/timer/main.go
       kind: implementations
