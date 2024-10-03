@@ -55,7 +55,9 @@ func TestExtractCommand(t *testing.T) {
 		return rootCmd.Execute()
 	}
 
-	t.Run("正常系: 知識リストが正しく抽出されること", func(t *testing.T) {
+	t.Run("知識リストが正しく抽出されること", func(t *testing.T) {
+		// ・LLMが生成したパスはプロジェクトルートからの相対パスで、know.ymlに記載されるパスは抽出対象ファイルからの相対パスであること
+
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -69,22 +71,22 @@ llm:
     driver: anthropic
     model: claude-3-5-sonnet-20240620
 `))
-		space.WriteFile("target.go", []byte("package main\n\nfunc main() {}"))
+		space.WriteFile("dir/target.go", []byte("package main\n\nfunc main() {}"))
 
 		generatedKnowledge := `
-<!-- CODE_BLOCK_BEGIN -->` + "```" + `target.go.know.yml
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `dir/target.go.know.yml
 knowledge:
-  - path: some/path/file1.go
+  - path: dir/some/path/file1.go
     kind: examples
-  - path: another/path/file2.go
+  - path: dir/another/path/file2.go
     kind: implementations
     chain-make: true
-  - path: another/path/file3.go
+  - path: dir/another/path/file3.go
     kind: implementations
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
 
-		err := callCommand(mockCtrl, []string{"extract", "target.go"}, func(mocks Mocks) {
+		err := callCommand(mockCtrl, []string{"extract", "dir/target.go"}, func(mocks Mocks) {
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).Return(generatedKnowledge, nil)
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 		})
@@ -92,7 +94,7 @@ knowledge:
 		assert.NoError(t, err)
 
 		// Assert
-		space.AssertFile("target.go.know.yml", func(actual []byte) {
+		space.AssertFile("dir/target.go.know.yml", func(actual []byte) {
 			expectedContent := `knowledge:
   - path: some/path/file1.go
     kind: examples
@@ -106,7 +108,7 @@ knowledge:
 		})
 	})
 
-	t.Run("正常系: 既存の知識リストとマージされること", func(t *testing.T) {
+	t.Run("既存の知識リストとマージされること", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -158,7 +160,7 @@ knowledge:
 		})
 	})
 
-	t.Run("正常系: フォルダ構造情報が正しく含まれること", func(t *testing.T) {
+	t.Run("フォルダ構造情報が正しく含まれること", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
