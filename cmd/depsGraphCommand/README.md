@@ -11,7 +11,8 @@ command deps-graph
 # 処理概要
 
 * プロジェクトスキャンを用いて、単一ファイル知識リストファイルを読み込みます
-* 単一ファイル知識リストファイルのchain-makeがtrueのknowledgeを集めます
+* スキャンの進捗を標準出力に表示します
+* 単一ファイル知識リストファイルのknowledgeのうち、`chain-make`がtrueのものを集めます(kindは不問)
   * 単一ファイル知識リストファイルのTarget CodeがDependant, knowledgeのpathがDependencyです
 * 依存グラフ変換を行います
   * 入力

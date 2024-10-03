@@ -5,6 +5,10 @@
 * /domain 配下にドメインモデルやビジネスロジック、infrastructure層とのインターフェースを定義する
 * /infrastructure 配下に外部との通信やファイルへのアクセスなどのI/O処理を定義する
 
+# Coding Rules
+
+* エラーをリターンする場合はgithub.com/rotisserie/erisを使ってwrapする
+
 # エントリーポイント
 
 当該ソフトウェアのエントリーポイントは /main.go です。
@@ -154,3 +158,8 @@ D
 # 依存グラフ(depsGraph)とは
 
 * 指定したファイルに依存しているファイルを逆引きするためのグラフです
+
+# .sishoignoreファイルとは
+
+* プロジェクトルートに配置する
+* パースは github.com/denormal/go-gitignore を利用する

@@ -21,7 +21,10 @@ func NewProjectScanService(fileRepository file.Repository) *ProjectScanService {
 // path はrootDirからの相対パス
 type ScanFunc func(path string, info os.FileInfo) error
 
-func (s *ProjectScanService) Scan(rootDir string, scanFunc ScanFunc) error {
+// ProgressFunc は進捗を通知するための関数型です
+type ProgressFunc func(event string, path string)
+
+func (s *ProjectScanService) Scan(rootDir string, scanFunc ScanFunc, progressFunc ProgressFunc) error {
 	// Load .sishoignore file
 	ignorePath := filepath.Join(rootDir, ".sishoignore")
 	ignore, err := gitignore.NewFromFile(ignorePath)
@@ -34,31 +37,36 @@ func (s *ProjectScanService) Scan(rootDir string, scanFunc ScanFunc) error {
 			return err
 		}
 
+		relPath, err := filepath.Rel(rootDir, path)
+		if err != nil {
+			return err
+		}
+
 		// Skip hidden directories
 		if info.IsDir() && info.Name()[0] == '.' {
+			progressFunc("skip_dir", relPath)
 			return filepath.SkipDir
 		}
 
 		// Check if the path should be ignored
 		if ignore != nil {
-			relPath, err := filepath.Rel(rootDir, path)
-			if err != nil {
-				return err
-			}
-
 			if relPath != "." && ignore.Match(relPath) != nil {
 				if info.IsDir() {
+					progressFunc("skip_ignored_dir", relPath)
 					return filepath.SkipDir
 				}
+				progressFunc("skip_ignored_file", relPath)
 				return nil
 			}
 		}
 
-		// Call the scan function with relative path
-		relPath, err := filepath.Rel(rootDir, path)
-		if err != nil {
-			return err
+		if info.IsDir() {
+			progressFunc("enter_dir", relPath)
+		} else {
+			progressFunc("scan_file", relPath)
 		}
+
+		// Call the scan function with relative path
 		return scanFunc(relPath, info)
 	})
 }
