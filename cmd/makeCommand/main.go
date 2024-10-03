@@ -118,6 +118,13 @@ func runMake(
 			}
 		}
 
+		// Target Codeの一覧を標準出力に出力
+		fmt.Println("Target Codes:")
+		for _, arg := range args {
+			fmt.Printf("- %s\n", arg)
+		}
+		fmt.Println()
+
 		// 知識のスキャンとロード
 		scannedKnowledge, err := knowledgeScanService.ScanKnowledge(rootDir, args)
 		if err != nil {
