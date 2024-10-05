@@ -16,6 +16,7 @@ import (
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
+	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
@@ -34,6 +35,7 @@ func NewExtractCommand(
 	fileRepository file.Repository,
 	knowledgeRepository knowledge.Repository,
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
+	knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService,
 ) *ExtractCommand {
 	cmd := &cobra.Command{
 		Use:   "extract [path]",
@@ -41,7 +43,7 @@ func NewExtractCommand(
 		Long:  `Extract knowledge list from the specified Target Code and generate or update a knowledge list file.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runExtract(args[0], claudeClient, openAiClient, configFindService, configRepository, fileRepository, knowledgeRepository, folderStructureMakeService)
+			return runExtract(args[0], claudeClient, openAiClient, configFindService, configRepository, fileRepository, knowledgeRepository, folderStructureMakeService, knowledgePathNormalizeService)
 		},
 	}
 
@@ -59,6 +61,7 @@ func runExtract(
 	fileRepository file.Repository,
 	knowledgeRepository knowledge.Repository,
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
+	knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService,
 ) error {
 	configPath, err := configFindService.FindConfig()
 	if err != nil {
@@ -72,13 +75,24 @@ func runExtract(
 
 	rootDir := configFindService.GetProjectRoot(configPath)
 
-	targetContent, err := os.ReadFile(path)
+	// Convert path to absolute path
+	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return eris.Wrapf(err, "failed to read file: %s", path)
+		return eris.Wrapf(err, "failed to get absolute path for: %s", path)
+	}
+
+	targetContent, err := os.ReadFile(absPath)
+	if err != nil {
+		return eris.Wrapf(err, "failed to read file: %s", absPath)
+	}
+
+	relPath, err := filepath.Rel(rootDir, absPath)
+	if err != nil {
+		return eris.Wrapf(err, "failed to get relative path for: %s", absPath)
 	}
 
 	target := prompts.Target{
-		Path:    path,
+		Path:    relPath,
 		Content: string(targetContent),
 	}
 
@@ -87,9 +101,16 @@ func runExtract(
 		return eris.Wrap(err, "failed to get folder structure")
 	}
 
+	knowledgeListPath := getKnowledgeListFilePath(absPath)
+	relativeKnowledgeListPath, err := filepath.Rel(rootDir, knowledgeListPath)
+	if err != nil {
+		return eris.Wrap(err, "failed to get relative knowledge list path")
+	}
+
 	prompt, err := extract.BuildPrompt(extract.PromptParam{
-		Target:          target,
-		FolderStructure: folderStructure,
+		Target:            target,
+		FolderStructure:   folderStructure,
+		KnowledgeListPath: relativeKnowledgeListPath,
 	})
 	if err != nil {
 		return eris.Wrap(err, "failed to build prompt")
@@ -110,28 +131,33 @@ func runExtract(
 		return eris.Wrap(err, "failed to send message to LLM")
 	}
 
-	knowledgeList, err := extractKnowledgeList(answer, path)
+	knowledgeList, err := extractKnowledgeList(answer, relativeKnowledgeListPath, rootDir, knowledgePathNormalizeService)
 	if err != nil {
 		return eris.Wrap(err, "failed to extract knowledge list")
 	}
 
-	knowledgeFilePath := getKnowledgeListFilePath(path)
-	existingKnowledgeFile, err := knowledgeRepository.Read(knowledgeFilePath)
-	if err == nil {
-		knowledgeList = mergeKnowledgeLists(existingKnowledgeFile.KnowledgeList, knowledgeList)
+	existingKnowledgeFile := knowledge.KnowledgeFile{
+		KnowledgeList: []knowledge.Knowledge{},
 	}
+	if _, err := os.Stat(knowledgeListPath); err == nil {
+		existingKnowledgeFile, err = knowledgeRepository.Read(knowledgeListPath)
+		if err != nil {
+			return eris.Wrapf(err, "failed to read existing knowledge file: %s", knowledgeListPath)
+		}
+	}
+	knowledgeList = mergeKnowledgeLists(existingKnowledgeFile.KnowledgeList, knowledgeList, knowledgePathNormalizeService, rootDir, knowledgeListPath)
 
-	err = knowledgeRepository.Write(knowledgeFilePath, knowledge.KnowledgeFile{KnowledgeList: knowledgeList})
+	err = knowledgeRepository.Write(knowledgeListPath, knowledge.KnowledgeFile{KnowledgeList: knowledgeList})
 	if err != nil {
-		return eris.Wrapf(err, "failed to write knowledge file: %s", knowledgeFilePath)
+		return eris.Wrapf(err, "failed to write knowledge file: %s", knowledgeListPath)
 	}
 
-	fmt.Printf("Knowledge list extracted and saved to: %s\n", knowledgeFilePath)
+	fmt.Printf("Knowledge list extracted and saved to: %s\n", knowledgeListPath)
 	return nil
 }
 
-func extractKnowledgeList(answer string, path string) ([]knowledge.Knowledge, error) {
-	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(getKnowledgeListFilePath(path)) + "(.*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
+func extractKnowledgeList(answer string, knowledgeListPath string, rootDir string, knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService) ([]knowledge.Knowledge, error) {
+	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(knowledgeListPath) + "(.*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
 	matches := re.FindStringSubmatch(answer)
 
 	if len(matches) < 3 {
@@ -146,14 +172,6 @@ func extractKnowledgeList(answer string, path string) ([]knowledge.Knowledge, er
 		return nil, eris.Wrap(err, "failed to unmarshal YAML content")
 	}
 
-	for i, k := range knowledgeFile.KnowledgeList {
-		relPath, err := filepath.Rel(filepath.Dir(path), k.Path)
-		if err != nil {
-			return nil, eris.Wrapf(err, "failed to get relative path for: %s", k.Path)
-		}
-		knowledgeFile.KnowledgeList[i].Path = relPath
-	}
-
 	return knowledgeFile.KnowledgeList, nil
 }
 
@@ -163,21 +181,25 @@ func getKnowledgeListFilePath(path string) string {
 	return filepath.Join(dir, fileName+".know.yml")
 }
 
-func mergeKnowledgeLists(existing, new []knowledge.Knowledge) []knowledge.Knowledge {
+func mergeKnowledgeLists(existing, new []knowledge.Knowledge, knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService, rootDir, knowledgeListPath string) []knowledge.Knowledge {
 	merged := make([]knowledge.Knowledge, 0)
 	seen := make(map[string]bool)
 
 	for _, k := range existing {
-		if !seen[k.Path] {
+		normalizedPath, _ := knowledgePathNormalizeService.NormalizePath(rootDir, filepath.Dir(knowledgeListPath), k.Path)
+		if !seen[normalizedPath] {
 			merged = append(merged, k)
-			seen[k.Path] = true
+			seen[normalizedPath] = true
 		}
 	}
 
 	for _, k := range new {
-		if !seen[k.Path] {
+		normalizedPath, _ := knowledgePathNormalizeService.NormalizePath(rootDir, filepath.Dir(knowledgeListPath), k.Path)
+		if !seen[normalizedPath] {
+			// NOTE: LLMの回答から抽出した知識リストのパスは@表記の相対パスに直す
+			k.Path = "@/" + filepath.Clean(k.Path)
 			merged = append(merged, k)
-			seen[k.Path] = true
+			seen[normalizedPath] = true
 		}
 	}
 

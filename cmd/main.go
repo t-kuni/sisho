@@ -82,6 +82,7 @@ func NewRootCommand() *RootCommand {
 		fileRepo,
 		knowledgeRepo,
 		folderStructureMakeSvc,
+		knowledgePathNormalizeSvc,
 	)
 	depsGraphCmd := depsGraphCommand.NewDepsGraphCommand(
 		configFindSvc,

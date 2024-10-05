@@ -16,7 +16,7 @@ func (s *KnowledgePathNormalizeService) NormalizePaths(projectRoot string, knowl
 	knowledgeFileDir := filepath.Dir(knowledgeFilePath)
 
 	for i, k := range *knowledgeList {
-		absPath, err := s.normalizePath(projectRoot, knowledgeFileDir, k.Path)
+		absPath, err := s.NormalizePath(projectRoot, knowledgeFileDir, k.Path)
 		if err != nil {
 			return err
 		}
@@ -26,7 +26,7 @@ func (s *KnowledgePathNormalizeService) NormalizePaths(projectRoot string, knowl
 	return nil
 }
 
-func (s *KnowledgePathNormalizeService) normalizePath(projectRoot, knowledgeFileDir, path string) (string, error) {
+func (s *KnowledgePathNormalizeService) NormalizePath(projectRoot, knowledgeFileDir, path string) (string, error) {
 	if filepath.IsAbs(path) {
 		return path, nil
 	}

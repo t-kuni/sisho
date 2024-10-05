@@ -8,6 +8,7 @@ import (
 	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
+	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
 	config2 "github.com/t-kuni/sisho/infrastructure/repository/config"
 	knowledge2 "github.com/t-kuni/sisho/infrastructure/repository/knowledge"
 	"github.com/t-kuni/sisho/testUtil"
@@ -34,6 +35,7 @@ func TestExtractCommand(t *testing.T) {
 		knowledgeRepo := knowledge2.NewRepository()
 		configFindSvc := configFindService.NewConfigFindService(mockFileRepo)
 		folderStructureMakeSvc := folderStructureMake.NewFolderStructureMakeService()
+		knowledgePathNormalizeService := knowledgePathNormalize.NewKnowledgePathNormalizeService()
 
 		customizeMocks(Mocks{
 			ClaudeClient:   mockClaudeClient,
@@ -49,6 +51,7 @@ func TestExtractCommand(t *testing.T) {
 			mockFileRepo,
 			knowledgeRepo,
 			folderStructureMakeSvc,
+			knowledgePathNormalizeService,
 		)
 
 		rootCmd := &cobra.Command{}
@@ -84,7 +87,7 @@ knowledge:
   - path: dir/another/path/file2.go
     kind: implementations
     chain-make: true
-  - path: dir/another/path/file3.go
+  - path: ./dir/another/path/file3.go
     kind: implementations
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
@@ -98,13 +101,14 @@ knowledge:
 
 		// Assert
 		space.AssertFile("dir/target.go.know.yml", func(actual []byte) {
-			expectedContent := `knowledge:
-  - path: some/path/file1.go
+			expectedContent := `
+knowledge:
+  - path: "@/dir/some/path/file1.go"
     kind: examples
-  - path: another/path/file2.go
+  - path: "@/dir/another/path/file2.go"
     kind: implementations
     chain-make: true
-  - path: another/path/file3.go
+  - path: "@/dir/another/path/file3.go"
     kind: implementations
 `
 			assert.YAMLEq(t, expectedContent, string(actual))
@@ -154,9 +158,9 @@ knowledge:
 			expectedContent := `knowledge:
   - path: existing/file.go
     kind: specifications
-  - path: some/path/file1.go
+  - path: "@/some/path/file1.go"
     kind: examples
-  - path: another/path/file2.go
+  - path: "@/another/path/file2.go"
     kind: implementations
 `
 			assert.YAMLEq(t, expectedContent, string(actual))

@@ -12,3 +12,6 @@ knowledge:
   - path: ../../domain/service/folderStructureMake/main.go
     kind: implementations
     chain-make: true
+  - path: ../../domain/service/knowledgePathNormalize/main.go
+    kind: implementations
+    chain-make: true
