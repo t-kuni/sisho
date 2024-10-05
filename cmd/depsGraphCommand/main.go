@@ -7,6 +7,7 @@ import (
 	"github.com/t-kuni/sisho/domain/repository/depsGraph"
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
+	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
 	"github.com/t-kuni/sisho/domain/service/projectScan"
 	"os"
 	"path/filepath"
@@ -22,13 +23,14 @@ func NewDepsGraphCommand(
 	projectScanService *projectScan.ProjectScanService,
 	knowledgeRepo knowledge.Repository,
 	depsGraphRepo depsGraph.Repository,
+	knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService,
 ) *DepsGraphCommand {
 	cmd := &cobra.Command{
 		Use:   "deps-graph",
 		Short: "Generate dependency graph",
 		Long:  `Scan the project and generate a dependency graph based on knowledge files.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runDepsGraph(configFindService, projectScanService, knowledgeRepo, depsGraphRepo)
+			return runDepsGraph(configFindService, projectScanService, knowledgeRepo, depsGraphRepo, knowledgePathNormalizeService)
 		},
 	}
 
@@ -42,6 +44,7 @@ func runDepsGraph(
 	projectScanService *projectScan.ProjectScanService,
 	knowledgeRepo knowledge.Repository,
 	depsGraphRepo depsGraph.Repository,
+	knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService,
 ) error {
 	// Find config and get project root
 	configPath, err := configFindService.FindConfig()
@@ -57,17 +60,27 @@ func runDepsGraph(
 	err = projectScanService.Scan(rootDir, func(pathFromRoot string, info os.FileInfo) error {
 		// ここは必ずstrings.HasSuffixを使う必要がある
 		if !info.IsDir() && strings.HasSuffix(pathFromRoot, ".know.yml") {
-			yamlDirFromRoot := filepath.Dir(pathFromRoot)
-
-			knowledgeFile, err := knowledgeRepo.Read(pathFromRoot)
+			knowledgeFile, err := knowledgeRepo.Read(filepath.Join(rootDir, pathFromRoot))
 			if err != nil {
 				return eris.Wrapf(err, "failed to read knowledge file: %s", pathFromRoot)
 			}
 
+			for i := range knowledgeFile.KnowledgeList {
+				normalizedPath, err := knowledgePathNormalizeService.NormalizePath(rootDir, filepath.Dir(pathFromRoot), knowledgeFile.KnowledgeList[i].Path)
+				if err != nil {
+					return eris.Wrapf(err, "failed to normalize path: %s", knowledgeFile.KnowledgeList[i].Path)
+				}
+				knowledgeFile.KnowledgeList[i].Path = normalizedPath
+			}
+
 			for _, k := range knowledgeFile.KnowledgeList {
 				if k.ChainMake {
-					// 依存される側のパス（
-					dependency := depsGraph.Dependency(filepath.Clean(filepath.Join(yamlDirFromRoot, k.Path)))
+					// 依存される側のパス
+					relPath, err := filepath.Rel(rootDir, k.Path)
+					if err != nil {
+						return eris.Wrapf(err, "failed to get relative path: %s", k.Path)
+					}
+					dependency := depsGraph.Dependency(filepath.Clean(relPath))
 					// 依存する側のパス
 					dependent := depsGraph.Dependent(strings.TrimSuffix(pathFromRoot, ".know.yml"))
 					graph[dependency] = append(graph[dependency], dependent)

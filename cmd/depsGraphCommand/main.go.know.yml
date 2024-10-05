@@ -11,3 +11,6 @@ knowledge:
   - path: ../../domain/repository/depsGraph/main.go
     kind: implementations
     chain-make: true
+  - path: "@/domain/service/knowledgePathNormalize/main.go"
+    kind: implementations
+    chain-make: true

@@ -4,11 +4,13 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
+	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
 	"github.com/t-kuni/sisho/domain/service/projectScan"
 	depsGraph2 "github.com/t-kuni/sisho/infrastructure/repository/depsGraph"
 	file2 "github.com/t-kuni/sisho/infrastructure/repository/file"
 	knowledge2 "github.com/t-kuni/sisho/infrastructure/repository/knowledge"
 	"github.com/t-kuni/sisho/testUtil"
+	"path/filepath"
 	"testing"
 )
 
@@ -21,9 +23,10 @@ func TestDepsGraphCommand(t *testing.T) {
 		depsGraphRepo := depsGraph2.NewRepository()
 		configFindSvc := configFindService.NewConfigFindService(fileRepo)
 		projectScanSvc := projectScan.NewProjectScanService(fileRepo)
+		knowledgePathNormalizeService := knowledgePathNormalize.NewKnowledgePathNormalizeService()
 
 		// コマンドの実行
-		cmd := NewDepsGraphCommand(configFindSvc, projectScanSvc, knowledgeRepo, depsGraphRepo)
+		cmd := NewDepsGraphCommand(configFindSvc, projectScanSvc, knowledgeRepo, depsGraphRepo, knowledgePathNormalizeService)
 		rootCmd := &cobra.Command{}
 		rootCmd.AddCommand(cmd.CobraCommand)
 		rootCmd.SetArgs(args)
@@ -31,41 +34,103 @@ func TestDepsGraphCommand(t *testing.T) {
 	}
 
 	t.Run("依存グラフが正しく生成されること", func(t *testing.T) {
-		space := testUtil.BeginTestSpace(t)
-		defer space.CleanUp()
+		t.Run("相対パスのパターン", func(t *testing.T) {
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
 
-		space.MkDir(".sisho")
+			space.MkDir(".sisho")
 
-		// file1.go -> aaa/file2.go -> bbb/file3.go
-		space.WriteFile("sisho.yml", []byte(""))
-		space.WriteFile("file1.go", []byte(""))
-		space.WriteFile("file1.go.know.yml", []byte(`
+			// file1.go -> aaa/file2.go -> bbb/file3.go
+			space.WriteFile("sisho.yml", []byte(""))
+			space.WriteFile("file1.go", []byte(""))
+			space.WriteFile("file1.go.know.yml", []byte(`
 knowledge:
   - path: aaa/file2.go
     kind: implementations
     chain-make: true
 `))
-		space.WriteFile("aaa/file2.go", []byte(""))
-		space.WriteFile("aaa/file2.go.know.yml", []byte(`
+			space.WriteFile("aaa/file2.go", []byte(""))
+			space.WriteFile("aaa/file2.go.know.yml", []byte(`
 knowledge:
   - path: ../bbb/file3.go
     kind: implementations
     chain-make: true
 `))
-		space.WriteFile("bbb/file3.go", []byte(""))
+			space.WriteFile("bbb/file3.go", []byte(""))
 
-		err := callCommand([]string{"deps-graph"})
-		assert.NoError(t, err)
+			err := callCommand([]string{"deps-graph"})
+			assert.NoError(t, err)
 
-		// 生成された依存グラフを検証
-		space.AssertFile(".sisho/deps-graph.json", func(actual []byte) {
-			expect := `
+			// 生成された依存グラフを検証
+			space.AssertFile(".sisho/deps-graph.json", func(actual []byte) {
+				expect := `
 {
   "aaa/file2.go": [ "file1.go" ],
   "bbb/file3.go": [ "aaa/file2.go" ]
 }
 `
-			assert.JSONEq(t, expect, string(actual))
+				assert.JSONEq(t, expect, string(actual))
+			})
+		})
+
+		t.Run("絶対パスのパターン", func(t *testing.T) {
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
+
+			space.MkDir(".sisho")
+
+			space.WriteFile("sisho.yml", []byte(""))
+			space.WriteFile("file1.go", []byte(""))
+			space.WriteFile("file1.go.know.yml", []byte(`
+knowledge:
+  - path: `+filepath.Join(space.Dir, "aaa/file2.go")+`
+    kind: implementations
+    chain-make: true
+`))
+			space.WriteFile("aaa/file2.go", []byte(""))
+
+			err := callCommand([]string{"deps-graph"})
+			assert.NoError(t, err)
+
+			// 生成された依存グラフを検証
+			space.AssertFile(".sisho/deps-graph.json", func(actual []byte) {
+				expect := `
+{
+  "aaa/file2.go": [ "file1.go" ]
+}
+`
+				assert.JSONEq(t, expect, string(actual))
+			})
+		})
+
+		t.Run("@/ から始まるパスのパターン", func(t *testing.T) {
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
+
+			space.MkDir(".sisho")
+
+			space.WriteFile("sisho.yml", []byte(""))
+			space.WriteFile("file1.go", []byte(""))
+			space.WriteFile("file1.go.know.yml", []byte(`
+knowledge:
+  - path: "@/aaa/file2.go"
+    kind: implementations
+    chain-make: true
+`))
+			space.WriteFile("aaa/file2.go", []byte(""))
+
+			err := callCommand([]string{"deps-graph"})
+			assert.NoError(t, err)
+
+			// 生成された依存グラフを検証
+			space.AssertFile(".sisho/deps-graph.json", func(actual []byte) {
+				expect := `
+{
+  "aaa/file2.go": [ "file1.go" ]
+}
+`
+				assert.JSONEq(t, expect, string(actual))
+			})
 		})
 	})
 
