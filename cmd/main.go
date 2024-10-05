@@ -89,6 +89,7 @@ func NewRootCommand() *RootCommand {
 		projectScanSvc,
 		knowledgeRepo,
 		depsGraphRepo,
+		knowledgePathNormalizeSvc,
 	)
 
 	cmd.AddCommand(initCmd.CobraCommand)
