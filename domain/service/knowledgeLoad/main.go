@@ -4,7 +4,6 @@ import (
 	"github.com/t-kuni/sisho/domain/model/prompts"
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
 	"os"
-	"path/filepath"
 )
 
 type KnowledgeLoadService struct {
@@ -21,7 +20,7 @@ func (s *KnowledgeLoadService) LoadKnowledge(rootDir string, knowledgeList []kno
 	kindMap := make(map[string][]prompts.Knowledge)
 
 	for _, k := range knowledgeList {
-		content, err := s.readFile(filepath.Join(rootDir, k.Path))
+		content, err := s.readFile(k.Path)
 		if err != nil {
 			return nil, err
 		}

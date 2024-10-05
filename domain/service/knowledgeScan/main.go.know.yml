@@ -1,0 +1,10 @@
+knowledge:
+    - path: ../../repository/knowledge/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../autoCollect/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../knowledgePathNormalize/main.go
+      kind: implementations
+      chain-make: true

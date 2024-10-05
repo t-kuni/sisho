@@ -1,4 +1,6 @@
 knowledge:
+    - path: ../main.go
+      kind: implementations
     - path: addCommand/main.go
       kind: implementations
       chain-make: true
@@ -43,4 +45,6 @@ knowledge:
     - path: ../infrastructure/system/ksuid/main.go
       kind: implementations
     - path: ../infrastructure/system/timer/main.go
+      kind: implementations
+    - path: ../domain/service/knowledgePathNormalize/main.go
       kind: implementations

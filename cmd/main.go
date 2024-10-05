@@ -12,6 +12,7 @@ import (
 	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
+	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
 	"github.com/t-kuni/sisho/domain/service/knowledgeScan"
 	"github.com/t-kuni/sisho/domain/service/projectScan"
 	"github.com/t-kuni/sisho/infrastructure/external/claude"
@@ -49,7 +50,8 @@ func NewRootCommand() *RootCommand {
 	configFindSvc := configFindService.NewConfigFindService(fileRepo)
 	contextScanSvc := contextScan.NewContextScanService(fileRepo)
 	autoCollectSvc := autoCollect.NewAutoCollectService(configRepo, contextScanSvc)
-	knowledgeScanSvc := knowledgeScan.NewKnowledgeScanService(knowledgeRepo, autoCollectSvc)
+	knowledgePathNormalizeSvc := knowledgePathNormalize.NewKnowledgePathNormalizeService()
+	knowledgeScanSvc := knowledgeScan.NewKnowledgeScanService(knowledgeRepo, autoCollectSvc, knowledgePathNormalizeSvc)
 	knowledgeLoadSvc := knowledgeLoad.NewKnowledgeLoadService(knowledgeRepo)
 	projectScanSvc := projectScan.NewProjectScanService(fileRepo)
 	folderStructureMakeSvc := folderStructureMake.NewFolderStructureMakeService()

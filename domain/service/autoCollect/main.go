@@ -19,6 +19,8 @@ func NewAutoCollectService(configRepository config.Repository, contextScanServic
 	}
 }
 
+// CollectAutoCollectFiles collects files based on the auto-collect settings in sisho.yml
+// It returns a slice of absolute file paths
 func (s *AutoCollectService) CollectAutoCollectFiles(rootDir string, targetPath string) ([]string, error) {
 	cfg, err := s.configRepository.Read(filepath.Join(rootDir, "sisho.yml"))
 	if err != nil {
@@ -27,11 +29,15 @@ func (s *AutoCollectService) CollectAutoCollectFiles(rootDir string, targetPath 
 
 	var collectedFiles []string
 
-	// README.mdの収集
+	// Collect README.md files
 	if cfg.AutoCollect.ReadmeMd {
 		err = s.contextScanService.ContextScan(rootDir, targetPath, func(path string, info os.FileInfo) error {
 			if filepath.Base(path) == "README.md" {
-				collectedFiles = append(collectedFiles, path)
+				absPath, err := filepath.Abs(filepath.Join(rootDir, path))
+				if err != nil {
+					return err
+				}
+				collectedFiles = append(collectedFiles, absPath)
 			}
 			return nil
 		})
@@ -40,11 +46,15 @@ func (s *AutoCollectService) CollectAutoCollectFiles(rootDir string, targetPath 
 		}
 	}
 
-	// [TARGET_CODE].mdの収集
+	// Collect [TARGET_CODE].md file
 	if cfg.AutoCollect.TargetCodeMd {
 		targetMdPath := filepath.Join(filepath.Dir(targetPath), filepath.Base(targetPath)+".md")
-		if _, err := os.Stat(targetMdPath); err == nil {
-			collectedFiles = append(collectedFiles, targetMdPath)
+		absTargetMdPath, err := filepath.Abs(targetMdPath)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := os.Stat(absTargetMdPath); err == nil {
+			collectedFiles = append(collectedFiles, absTargetMdPath)
 		}
 	}
 

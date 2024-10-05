@@ -12,6 +12,7 @@ import (
 	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
+	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
 	"github.com/t-kuni/sisho/domain/service/knowledgeScan"
 	"github.com/t-kuni/sisho/domain/system/ksuid"
 	"github.com/t-kuni/sisho/domain/system/timer"
@@ -48,7 +49,8 @@ func TestMakeCommand(t *testing.T) {
 		configFindSvc := configFindService.NewConfigFindService(mockFileRepo)
 		contextScanSvc := contextScan.NewContextScanService(mockFileRepo)
 		autoCollectSvc := autoCollect.NewAutoCollectService(configRepo, contextScanSvc)
-		knowledgeScanSvc := knowledgeScan.NewKnowledgeScanService(knowledgeRepo, autoCollectSvc)
+		knowledgePathNormalizeSvc := knowledgePathNormalize.NewKnowledgePathNormalizeService()
+		knowledgeScanSvc := knowledgeScan.NewKnowledgeScanService(knowledgeRepo, autoCollectSvc, knowledgePathNormalizeSvc)
 		knowledgeLoadSvc := knowledgeLoad.NewKnowledgeLoadService(knowledgeRepo)
 		mockKsuidGenerator := ksuid.NewMockIKsuid(mockCtrl)
 		folderStructureMakeSvc := folderStructureMake.NewFolderStructureMakeService()
@@ -171,110 +173,272 @@ UPDATED_CONTENT
 		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "answer.md"))
 	})
 
-	t.Run("Knowledgeスキャンが正しく行われること", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+	t.Run("Knowledgeスキャンについて", func(t *testing.T) {
+		t.Run("相対パスパターン", func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
 
-		space := testUtil.BeginTestSpace(t)
-		defer space.CleanUp()
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
 
-		// Setup Files
-		space.WriteFile("sisho.yml", []byte(`
-lang: ja
+			// Setup Files
+			space.WriteFile("sisho.yml", []byte(`
 llm:
    driver: anthropic
    model: claude-3-5-sonnet-20240620
-auto-collect:
-   README.md: true
-   "[TARGET_CODE].md": true
-additional-knowledge:
-   folder-structure: true
 `))
-		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+			space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
 
-		space.WriteFile("aaa/bbb/SPEC.md", []byte("This is SPEC.md"))
-		space.WriteFile("aaa/bbb/ccc/.knowledge.yml", []byte(`
+			space.WriteFile("aaa/bbb/SPEC.md", []byte("This is SPEC.md"))
+			space.WriteFile("aaa/bbb/ccc/.knowledge.yml", []byte(`
 knowledge:
   - path: ../SPEC.md
     kind: specifications
 `))
 
-		space.WriteFile("aaa/bbb/SPEC2.md", []byte("This is SPEC2.md"))
-		space.WriteFile("aaa/.knowledge.yml", []byte(`
+			space.WriteFile("aaa/bbb/SPEC2.md", []byte("This is SPEC2.md"))
+			space.WriteFile("aaa/.knowledge.yml", []byte(`
 knowledge:
   - path: bbb/SPEC2.md
     kind: specifications
 `))
 
-		generated := `
+			generated := `
 <!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
-			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
-			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
-					content := messages[0].Content
-					// Check if knowledge from .knowledge.yml is included
-					assert.Contains(t, content, "aaa/bbb/SPEC.md")
-					assert.Contains(t, content, "This is SPEC.md")
-					assert.Contains(t, content, "aaa/bbb/SPEC2.md")
-					assert.Contains(t, content, "This is SPEC2.md")
-					return generated, nil
-				})
-			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
-			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+						content := messages[0].Content
+						// Check if knowledge from .knowledge.yml is included
+						assert.Contains(t, content, "aaa/bbb/SPEC.md")
+						assert.Contains(t, content, "This is SPEC.md")
+						assert.Contains(t, content, "aaa/bbb/SPEC2.md")
+						assert.Contains(t, content, "This is SPEC2.md")
+						return generated, nil
+					})
+				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			})
+			assert.NoError(t, err)
 		})
-		assert.NoError(t, err)
-	})
 
-	t.Run("単一ファイル知識リストファイルが正しく読み込まれること", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
+		t.Run("絶対パスパターン", func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
 
-		space := testUtil.BeginTestSpace(t)
-		defer space.CleanUp()
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
 
-		// Setup Files
-		space.WriteFile("sisho.yml", []byte(`
-lang: ja
+			// Setup Files
+			space.WriteFile("sisho.yml", []byte(`
 llm:
    driver: anthropic
    model: claude-3-5-sonnet-20240620
-auto-collect:
-   README.md: true
-   "[TARGET_CODE].md": true
-additional-knowledge:
-   folder-structure: true
 `))
-		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+			space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
 
-		space.WriteFile("aaa/bbb/ccc/SPEC.md", []byte("This is SPEC.md"))
-		space.WriteFile("aaa/bbb/ccc/ddd.txt.know.yml", []byte(`
+			space.WriteFile("aaa/bbb/SPEC.md", []byte("This is SPEC.md"))
+			space.WriteFile("aaa/bbb/ccc/.knowledge.yml", []byte(`
 knowledge:
-  - path: SPEC.md
+  - path: `+filepath.Join(space.Dir, "aaa/bbb/SPEC.md")+`
     kind: specifications
 `))
 
-		generated := `
+			generated := `
 <!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
-			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
-			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
-					content := messages[0].Content
-					assert.Contains(t, content, "aaa/bbb/ccc/SPEC.md")
-					assert.Contains(t, content, "This is SPEC.md")
-					return generated, nil
-				})
-			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
-			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+						content := messages[0].Content
+						// Check if knowledge from .knowledge.yml is included
+						assert.Contains(t, content, "aaa/bbb/SPEC.md")
+						assert.Contains(t, content, "This is SPEC.md")
+						return generated, nil
+					})
+				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			})
+			assert.NoError(t, err)
 		})
-		assert.NoError(t, err)
+
+		t.Run("プロジェクトルートからの相対パスパターン", func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
+
+			// Setup Files
+			space.WriteFile("sisho.yml", []byte(`
+llm:
+   driver: anthropic
+   model: claude-3-5-sonnet-20240620
+`))
+			space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+
+			space.WriteFile("aaa/bbb/SPEC.md", []byte("This is SPEC.md"))
+			space.WriteFile("aaa/bbb/ccc/.knowledge.yml", []byte(`
+knowledge:
+  - path: "@/aaa/bbb/SPEC.md"
+    kind: specifications
+`))
+
+			generated := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+			err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+						content := messages[0].Content
+						// Check if knowledge from .knowledge.yml is included
+						assert.Contains(t, content, "aaa/bbb/SPEC.md")
+						assert.Contains(t, content, "This is SPEC.md")
+						return generated, nil
+					})
+				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			})
+			assert.NoError(t, err)
+		})
+	})
+
+	t.Run("単一ファイル知識リストファイルについて", func(t *testing.T) {
+		t.Run("相対パスパターン", func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
+
+			// Setup Files
+			space.WriteFile("sisho.yml", []byte(`
+llm:
+   driver: anthropic
+   model: claude-3-5-sonnet-20240620
+`))
+			space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+
+			space.WriteFile("aaa/bbb/SPEC.md", []byte("This is SPEC.md"))
+			space.WriteFile("aaa/bbb/ccc/ddd.txt.know.yml", []byte(`
+knowledge:
+  - path: ../SPEC.md
+    kind: specifications
+`))
+
+			generated := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+			err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+						content := messages[0].Content
+						assert.Contains(t, content, "aaa/bbb/SPEC.md")
+						assert.Contains(t, content, "This is SPEC.md")
+						return generated, nil
+					})
+				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			})
+			assert.NoError(t, err)
+		})
+
+		t.Run("絶対パスパターン", func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
+
+			// Setup Files
+			space.WriteFile("sisho.yml", []byte(`
+llm:
+   driver: anthropic
+   model: claude-3-5-sonnet-20240620
+`))
+			space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+
+			space.WriteFile("aaa/bbb/SPEC.md", []byte("This is SPEC.md"))
+			space.WriteFile("aaa/bbb/ccc/ddd.txt.know.yml", []byte(`
+knowledge:
+  - path: `+filepath.Join(space.Dir, "aaa/bbb/SPEC.md")+`
+    kind: specifications
+`))
+
+			generated := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+			err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+						content := messages[0].Content
+						assert.Contains(t, content, "aaa/bbb/SPEC.md")
+						assert.Contains(t, content, "This is SPEC.md")
+						return generated, nil
+					})
+				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			})
+			assert.NoError(t, err)
+		})
+
+		t.Run("プロジェクトルートからの相対パスパターン", func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
+
+			// Setup Files
+			space.WriteFile("sisho.yml", []byte(`
+llm:
+   driver: anthropic
+   model: claude-3-5-sonnet-20240620
+`))
+			space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+
+			space.WriteFile("aaa/bbb/SPEC.md", []byte("This is SPEC.md"))
+			space.WriteFile("aaa/bbb/ccc/ddd.txt.know.yml", []byte(`
+knowledge:
+  - path: "@/aaa/bbb/SPEC.md"
+    kind: specifications
+`))
+
+			generated := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+			err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+						content := messages[0].Content
+						assert.Contains(t, content, "aaa/bbb/SPEC.md")
+						assert.Contains(t, content, "This is SPEC.md")
+						return generated, nil
+					})
+				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			})
+			assert.NoError(t, err)
+		})
 	})
 
 	t.Run("[TARGET_CODE].mdが正しく読み込まれること", func(t *testing.T) {

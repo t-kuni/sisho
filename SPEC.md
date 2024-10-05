@@ -8,6 +8,8 @@
 # Coding Rules
 
 * エラーをリターンする場合はgithub.com/rotisserie/erisを使ってwrapする
+* 別のモジュールから使われる可能性のあるものにはコメントを付ける（関数ドキュメントや構造体のフィールドコメントなど）
+* // FIXME や // TODO 、 // NOTE などの注釈コメントを勝手に消さないこと
 
 # エントリーポイント
 
@@ -111,6 +113,16 @@ knowledge:
 
 * path
   * string型
+  * Syntax
+    * 相対パス指定
+      * 例： `makeCommand/main.go`, `../lib/package1/main.go`
+      * 説明： 当該ファイルからの相対パスを指定します
+    * 絶対パス指定
+      * 例： `/Users/xxx/project/cmd/makeCommand/main.go`
+      * 説明： システムのルートからの絶対パスを指定します
+    * プロジェクトルートからの相対パス指定
+      * 例： `@/cmd/makeCommand/main.go`
+      * 説明： プロジェクトルートからの相対パスを指定します
   * 当該.knowledge.ymlから対象ファイルまでの相対パスを指定します
 * chain-make
   * bool型

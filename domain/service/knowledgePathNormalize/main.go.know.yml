@@ -1,4 +1,4 @@
 knowledge:
-  - path: ../knowledgePathNormalize/main.go
+  - path: ../../../domain/model/prompts/main.go
     kind: implementations
     chain-make: true

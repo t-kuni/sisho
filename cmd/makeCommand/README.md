@@ -41,7 +41,9 @@ command make [path1], [path2]...
   * １回めのプロンプトはdomain/model/prompts/prompt.md.tmplを使って生成される
   * ２回め以降のプロンプトはdomain/model/prompts/oneMoreMake.md.tmplを使って生成される
 * knowledgeスキャンを用いてレイヤー知識リストファイル（`.knowledge.yml`）を読み込む
+  * 読み込んだ直後にknowledgePathNormalizeを使ってパスを正規化する
 * Target Codeに対する単一ファイル知識リストファイル（`[ファイル名].know.yml`）を読み込む
+  * 読み込んだ直後にknowledgePathNormalizeを使ってパスを正規化する
 * フォルダ構造情報について
   * プロジェクトコンフィグの設定に応じてフォルダ構造情報をプロンプトに追加する
   * folderStructureMakeを使う

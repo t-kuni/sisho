@@ -1,55 +1,73 @@
 package knowledgeScan
 
 import (
+	"github.com/rotisserie/eris"
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
+	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
+	"os"
 	"path/filepath"
 )
 
 type KnowledgeScanService struct {
-	knowledgeRepo      knowledge.Repository
-	autoCollectService *autoCollect.AutoCollectService
+	knowledgeRepo                 knowledge.Repository
+	autoCollectService            *autoCollect.AutoCollectService
+	knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService
 }
 
-func NewKnowledgeScanService(knowledgeRepo knowledge.Repository, autoCollectService *autoCollect.AutoCollectService) *KnowledgeScanService {
+func NewKnowledgeScanService(
+	knowledgeRepo knowledge.Repository,
+	autoCollectService *autoCollect.AutoCollectService,
+	knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService,
+) *KnowledgeScanService {
 	return &KnowledgeScanService{
-		knowledgeRepo:      knowledgeRepo,
-		autoCollectService: autoCollectService,
+		knowledgeRepo:                 knowledgeRepo,
+		autoCollectService:            autoCollectService,
+		knowledgePathNormalizeService: knowledgePathNormalizeService,
 	}
 }
 
+// ScanKnowledge performs a knowledge scan for the given target paths
 func (s *KnowledgeScanService) ScanKnowledge(rootDir string, targetPaths []string) ([]knowledge.Knowledge, error) {
 	uniqueKnowledge := make(map[string]knowledge.Knowledge)
 
 	for _, targetPath := range targetPaths {
-		// レイヤー知識リストファイル（.knowledge.yml）のスキャン
+		// Scan layer knowledge list files (.knowledge.yml)
 		knowledgeFromYml, err := s.scanKnowledgeYml(rootDir, targetPath)
 		if err != nil {
-			return nil, err
-		}
-		for _, k := range knowledgeFromYml {
-			uniqueKnowledge[k.Path] = k
+			return nil, eris.Wrap(err, "failed to scan .knowledge.yml files")
 		}
 
-		// 単一ファイル知識リストファイル（[ファイル名].know.yml）のスキャン
+		// Scan single file knowledge list files ([filename].know.yml)
 		knowledgeFromKnowYml, err := s.scanKnowledgeKnowYml(rootDir, targetPath)
 		if err != nil {
-			return nil, err
-		}
-		for _, k := range knowledgeFromKnowYml {
-			uniqueKnowledge[k.Path] = k
+			return nil, eris.Wrap(err, "failed to scan .know.yml files")
 		}
 
-		// auto-collectの処理
+		// Normalize paths for single file knowledge list files
+		err = s.knowledgePathNormalizeService.NormalizePaths(rootDir, targetPath, &knowledgeFromKnowYml)
+		if err != nil {
+			return nil, eris.Wrap(err, "failed to normalize paths for .know.yml files")
+		}
+
+		// Process auto-collect
 		autoCollectedFiles, err := s.autoCollectService.CollectAutoCollectFiles(rootDir, targetPath)
 		if err != nil {
-			return nil, err
+			return nil, eris.Wrap(err, "failed to auto-collect files")
 		}
+
+		// Combine all knowledge
+		allKnowledge := append(knowledgeFromYml, knowledgeFromKnowYml...)
 		for _, file := range autoCollectedFiles {
-			uniqueKnowledge[file] = knowledge.Knowledge{
+			allKnowledge = append(allKnowledge, knowledge.Knowledge{
 				Path: file,
-				Kind: "specifications", // auto-collectされたファイルはspecificationsとして扱う
-			}
+				Kind: "specifications", // Auto-collected files are treated as specifications
+			})
+		}
+
+		// Remove duplicates
+		for _, k := range allKnowledge {
+			uniqueKnowledge[k.Path] = k
 		}
 	}
 
@@ -67,12 +85,23 @@ func (s *KnowledgeScanService) scanKnowledgeYml(rootDir string, targetPath strin
 
 	for {
 		knowledgeFilePath := filepath.Join(currentDir, ".knowledge.yml")
-		knowledgeFile, err := s.knowledgeRepo.Read(knowledgeFilePath)
+
+		// Check if file exists before attempting to read
+		_, err := os.Stat(knowledgeFilePath)
 		if err == nil {
-			for _, k := range knowledgeFile.KnowledgeList {
-				k.Path = filepath.Clean(filepath.Join(currentDir, k.Path))
-				knowledgeList = append(knowledgeList, k)
+			knowledgeFile, err := s.knowledgeRepo.Read(knowledgeFilePath)
+			if err != nil {
+				return nil, eris.Wrap(err, "failed to read .knowledge.yml")
 			}
+
+			// Normalize paths
+			err = s.knowledgePathNormalizeService.NormalizePaths(rootDir, knowledgeFilePath, &knowledgeFile.KnowledgeList)
+			if err != nil {
+				return nil, eris.Wrap(err, "failed to normalize paths for .knowledge.yml")
+			}
+			knowledgeList = append(knowledgeList, knowledgeFile.KnowledgeList...)
+		} else if !os.IsNotExist(err) {
+			return nil, eris.Wrap(err, "failed to check if .knowledge.yml exists")
 		}
 
 		if currentDir == "." {
@@ -90,12 +119,16 @@ func (s *KnowledgeScanService) scanKnowledgeKnowYml(rootDir string, targetPath s
 	fileName := filepath.Base(targetPath)
 	knowYmlPath := filepath.Join(filepath.Dir(targetPath), fileName+".know.yml")
 
-	knowledgeFile, err := s.knowledgeRepo.Read(knowYmlPath)
+	// Check if file exists before attempting to read
+	_, err := os.Stat(knowYmlPath)
 	if err == nil {
-		for _, k := range knowledgeFile.KnowledgeList {
-			k.Path = filepath.Clean(filepath.Join(filepath.Dir(targetPath), k.Path))
-			knowledgeList = append(knowledgeList, k)
+		knowledgeFile, err := s.knowledgeRepo.Read(knowYmlPath)
+		if err != nil {
+			return nil, eris.Wrap(err, "failed to read .know.yml")
 		}
+		knowledgeList = append(knowledgeList, knowledgeFile.KnowledgeList...)
+	} else if !os.IsNotExist(err) {
+		return nil, eris.Wrap(err, "failed to check if .know.yml exists")
 	}
 
 	return knowledgeList, nil

@@ -1,7 +1,9 @@
 # ScanKnowledge()
 
 * knowledgeスキャンを行う
+  * .knowledge.ymlを１つ読み込む毎にknowledgePathNormalizeを用いてKnowledge.Pathを絶対パスに変換する
 * プロジェクトルートのlパスとTarget Codeのパスの配列を受け取る
-* Knowledge.Pathはプロジェクトルートからの相対パスに置き換える
-* Knowledge.Pathが重複する場合は１つにまとめる
+* knowledgePathNormalizeを用いてKnowledge.Pathを絶対パスに変換する
 * 同時に単一ファイル知識リストファイル（`[ファイル名(拡張子除く)].know.yml`）も読み込む
+  * 読み込んだ直後にknowledgePathNormalizeを用いてKnowledge.Pathを絶対パスに変換する
+* 最後に、Knowledge.Pathが重複する場合は１つにまとめる
