@@ -79,3 +79,14 @@ func NewTime(timeStr string) time.Time {
 	}
 	return t
 }
+
+func Stdin(t *testing.T, s string) {
+	t.Helper()
+
+	r, w, _ := os.Pipe()
+	_, err := w.WriteString(s)
+	assert.NoError(t, err)
+	err = w.Close()
+	assert.NoError(t, err)
+	os.Stdin = r
+}

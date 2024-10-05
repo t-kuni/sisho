@@ -28,6 +28,8 @@ command make [path1], [path2]...
   * LLMの出力をファイルに反映します 
     * LLMの出力には余分な文章が含まれる可能性があるため、 Capturable Code Blockの仕様に基づいて切り出した結果をファイルに反映します
   * 標準出力には反映したファイルのパスと差分を出力します。
+* 標準入力から受け取ったテキストがある場合、prompt.md.tmplのInstructionsとして渡される
+  * pオプションが指定されている場合は無視される 
 * promptに含めるknowledgeのパスの一覧を標準出力に出力する
 * makeの履歴データについて
   * make毎に `プロジェクトルート/.sisho/history/XXXX` フォルダを作成する（これを単体履歴フォルダと呼ぶ）

@@ -21,6 +21,7 @@ import (
 	"github.com/t-kuni/sisho/domain/service/knowledgeScan"
 	"github.com/t-kuni/sisho/domain/system/ksuid"
 	"github.com/t-kuni/sisho/domain/system/timer"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -147,6 +148,11 @@ func runMake(
 			}
 			fmt.Println("Additional instructions:")
 			fmt.Println(instructions)
+		} else {
+			instructions, err = readStdin()
+			if err != nil {
+				return eris.Wrap(err, "failed to read from stdin")
+			}
 		}
 
 		printKnowledgePaths(knowledgeSets)
@@ -298,6 +304,15 @@ func getAdditionalInstructions() (string, error) {
 	}
 
 	return strings.TrimSpace(string(instructions)), nil
+}
+
+// readStdin は標準入力からテキストを読み取ります。
+func readStdin() (string, error) {
+	stdin, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return "", eris.Wrap(err, "failed to read from stdin")
+	}
+	return strings.TrimSpace(string(stdin)), nil
 }
 
 // printKnowledgePaths は、ナレッジのパスを出力します。

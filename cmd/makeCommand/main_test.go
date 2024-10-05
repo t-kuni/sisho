@@ -134,6 +134,54 @@ dummy text
 		})
 	})
 
+	t.Run("標準入力から入力されたテキストがプロンプトのAdditional Instructionに反映されること", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		space := testUtil.BeginTestSpace(t)
+		defer space.CleanUp()
+
+		// Setup Files
+		space.WriteFile("sisho.yml", []byte(`
+lang: ja
+llm:
+    driver: anthropic
+    model: claude-3-5-sonnet-20240620
+auto-collect:
+    README.md: true
+    "[TARGET_CODE].md": true
+additional-knowledge:
+    folder-structure: true
+`))
+		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+
+		inputText := "標準入力からのテキスト\n次の行も含む"
+		testUtil.Stdin(t, inputText)
+
+		generated := `
+dummy text
+
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+
+dummy text
+`
+
+		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+					assert.Contains(t, messages[0].Content, "Additional Instruction")
+					assert.Contains(t, messages[0].Content, inputText)
+					return generated, nil
+				})
+			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+		})
+		assert.NoError(t, err)
+	})
+
 	t.Run("履歴が保存されること", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
