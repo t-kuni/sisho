@@ -16,10 +16,11 @@ command make [path1], [path2]...
 * 生成ループとは 
   * 複数のTarget Codeが指定された場合、それぞれのTarget Codeに対して以下の処理を行うこと
     1. Target Codeを全て読み込み（生成毎に最新のTarget Codeを読み込みたいためループ毎に読み込む）
-    2. 生成ターゲットの知識リストファイル収集
-    3. プロンプト組み立て
-    4. LLMに送信
-    5. 回答をTarget Codeに反映
+    2. 知識ファイルの重複を排除する
+    3. 生成ターゲットの知識リストファイル収集
+    4. プロンプト組み立て
+    5. LLMに送信
+    6. 回答をTarget Codeに反映
 * 生成ターゲットとは
   * 生成ループの各ループで、生成する対象となるTarget Codeのこと
 * promptはprompts/prompt.md.tmplに従う

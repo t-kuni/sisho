@@ -22,6 +22,7 @@ import (
 	"github.com/t-kuni/sisho/testUtil"
 	"go.uber.org/mock/gomock"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -553,6 +554,59 @@ UPDATED_CONTENT
 			})
 			assert.NoError(t, err)
 		})
+	})
+
+	t.Run("重複する知識ファイルが除外されること", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		space := testUtil.BeginTestSpace(t)
+		defer space.CleanUp()
+
+		// Setup Files
+		space.WriteFile("sisho.yml", []byte(`
+llm:
+   driver: anthropic
+   model: claude-3-5-sonnet-20240620
+auto-collect:
+   "[TARGET_CODE].md": true
+`))
+		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+		space.WriteFile("aaa/bbb/ccc/ddd.txt.md", []byte("This is ddd.txt.md"))
+		space.WriteFile("aaa/.knowledge.yml", []byte(`
+knowledge:
+  - path: ./bbb/ccc/ddd.txt.md
+    kind: specifications
+`))
+		space.WriteFile("aaa/bbb/.knowledge.yml", []byte(`
+knowledge:
+  - path: ./ccc/ddd.txt.md
+    kind: specifications
+`))
+		space.WriteFile("aaa/bbb/ccc/ddd.txt.know.yml", []byte(`
+knowledge:
+  - path: ddd.txt.md
+    kind: specifications
+`))
+
+		generated := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+					content := messages[0].Content
+					assert.Equal(t, 1, strings.Count(content, "aaa/bbb/ccc/ddd.txt.md"), "aaa/bbb/ccc/ddd.txt.md should be included only once")
+					assert.Equal(t, 1, strings.Count(content, "This is ddd.txt.md"), "aaa/bbb/ccc/ddd.txt.md should be included only once")
+					return generated, nil
+				})
+			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+		})
+		assert.NoError(t, err)
 	})
 
 	t.Run("[TARGET_CODE].mdが正しく読み込まれること", func(t *testing.T) {

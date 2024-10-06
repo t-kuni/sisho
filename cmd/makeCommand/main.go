@@ -189,7 +189,7 @@ func runMake(
 			}
 
 			// 知識のスキャンとロード
-			scannedKnowledge, err := knowledgeScanService.ScanKnowledge(rootDir, path)
+			scannedKnowledge, err := knowledgeScanService.ScanKnowledgeMultipleTarget(rootDir, args)
 			if err != nil {
 				return eris.Wrap(err, "failed to scan knowledge")
 			}
