@@ -19,17 +19,19 @@ command make [path1], [path2]...
   * Target Codeの順番は依存グラフの深度の浅い順に並べる
   * deps-graph.jsonが存在しない場合はエラーを出力する
   * deps-graph.jsonにTarget Codeのパスが存在しない場合は一番深い深度のTarget Codeとして扱う
+* `-i`, `--input` オプションについて
+  * 標準入力からテキストを受け取り、prompt.md.tmplのInstructionsとして渡す
+  * pオプションと併用されている場合はエラーとする
 * `-p`, `--prompt` オプションについて
   * 環境変数EDITORで指定されたエディタで追加のpromptを指定できる
   * 環境変数EDITORが存在しない場合は`vi`が使われる
   * 入力したテキストはprompt.md.tmplのInstructionsとして渡される
   * 入力したテキストは標準出力にも出力される
+  * iオプションと併用されている場合はエラーとする
 * `-a`, `--apply` オプションについて
   * LLMの出力をファイルに反映します 
     * LLMの出力には余分な文章が含まれる可能性があるため、 Capturable Code Blockの仕様に基づいて切り出した結果をファイルに反映します
   * 標準出力には反映したファイルのパスと差分を出力します。
-* 標準入力から受け取ったテキストがある場合、prompt.md.tmplのInstructionsとして渡される
-  * pオプションが指定されている場合は無視される 
 * promptに含めるknowledgeのパスの一覧を標準出力に出力する
 * makeの履歴データについて
   * make毎に `プロジェクトルート/.sisho/history/XXXX` フォルダを作成する（これを単体履歴フォルダと呼ぶ）

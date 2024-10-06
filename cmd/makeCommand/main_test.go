@@ -168,7 +168,7 @@ UPDATED_CONTENT
 dummy text
 `
 
-		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-ai"}, func(mocks Mocks) {
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (string, error) {

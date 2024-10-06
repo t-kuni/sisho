@@ -56,19 +56,21 @@ func NewMakeCommand(
 	var promptFlag bool
 	var applyFlag bool
 	var chainFlag bool
+	var inputFlag bool
 
 	cmd := &cobra.Command{
 		Use:   "make [path...]",
 		Short: "Generate files using LLM",
 		Long:  `Generate files at the specified paths using LLM based on the knowledge sets.`,
 		Args:  cobra.MinimumNArgs(1),
-		RunE: runMake(&promptFlag, &applyFlag, &chainFlag, claudeClient, openAiClient, configFindService, configRepository,
+		RunE: runMake(&promptFlag, &applyFlag, &chainFlag, &inputFlag, claudeClient, openAiClient, configFindService, configRepository,
 			fileRepository, knowledgeScanService, knowledgeLoadService, depsGraphRepo, timer, ksuidGenerator, folderStructureMakeService),
 	}
 
 	cmd.Flags().BoolVarP(&promptFlag, "prompt", "p", false, "Open editor for additional instructions")
 	cmd.Flags().BoolVarP(&applyFlag, "apply", "a", false, "Apply LLM output to files")
 	cmd.Flags().BoolVarP(&chainFlag, "chain", "c", false, "Include dependent files based on deps-graph")
+	cmd.Flags().BoolVarP(&inputFlag, "input", "i", false, "Read additional instructions from stdin")
 
 	return &MakeCommand{
 		CobraCommand:   cmd,
@@ -84,6 +86,7 @@ func runMake(
 	promptFlag *bool,
 	applyFlag *bool,
 	chainFlag *bool,
+	inputFlag *bool,
 	claudeClient claude.Client,
 	openAiClient openAi.Client,
 	configFindService *configFindService.ConfigFindService,
@@ -141,14 +144,16 @@ func runMake(
 
 		// 追加の指示の取得
 		var instructions string
-		if *promptFlag {
+		if *promptFlag && *inputFlag {
+			return eris.New("cannot use both -p and -i flags")
+		} else if *promptFlag {
 			instructions, err = getAdditionalInstructions()
 			if err != nil {
 				return eris.Wrap(err, "failed to get additional instructions")
 			}
 			fmt.Println("Additional instructions:")
 			fmt.Println(instructions)
-		} else {
+		} else if *inputFlag {
 			instructions, err = readStdin()
 			if err != nil {
 				return eris.Wrap(err, "failed to read from stdin")
