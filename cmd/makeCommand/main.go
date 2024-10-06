@@ -131,6 +131,12 @@ func runMake(
 		}
 		fmt.Println()
 
+		// 全てのTarget Codeを予め読み込む
+		targets, err := readAllTargets(args, fileRepository)
+		if err != nil {
+			return eris.Wrap(err, "failed to read all targets")
+		}
+
 		// 知識のスキャンとロード
 		scannedKnowledge, err := knowledgeScanService.ScanKnowledge(rootDir, args)
 		if err != nil {
@@ -183,11 +189,6 @@ func runMake(
 
 		// 各ターゲットに対する処理
 		for i, path := range args {
-			target, err := readTarget(path, fileRepository)
-			if err != nil {
-				return eris.Wrapf(err, "failed to read target: %s", path)
-			}
-
 			var prompt string
 			if i == 0 {
 				folderStructure := ""
@@ -200,7 +201,7 @@ func runMake(
 
 				prompt, err = prompts.BuildPrompt(prompts.PromptParam{
 					KnowledgeSets:   knowledgeSets,
-					Targets:         []prompts.Target{target},
+					Targets:         targets,
 					Instructions:    instructions,
 					FolderStructure: folderStructure,
 				})
@@ -329,6 +330,19 @@ func printKnowledgePaths(knowledgeSets []prompts.KnowledgeSet) {
 		}
 	}
 	fmt.Println()
+}
+
+// readAllTargets は、指定されたパスの全てのターゲットを読み込みます。
+func readAllTargets(paths []string, fileRepository file.Repository) ([]prompts.Target, error) {
+	targets := make([]prompts.Target, len(paths))
+	for i, path := range paths {
+		target, err := readTarget(path, fileRepository)
+		if err != nil {
+			return nil, eris.Wrapf(err, "failed to read target: %s", path)
+		}
+		targets[i] = target
+	}
+	return targets, nil
 }
 
 // readTarget は、指定されたパスのターゲットを読み込みます。

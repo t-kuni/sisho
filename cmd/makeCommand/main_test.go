@@ -134,6 +134,60 @@ dummy text
 		})
 	})
 
+	t.Run("複数のファイルを指定して生成されたコードが反映されること", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		space := testUtil.BeginTestSpace(t)
+		defer space.CleanUp()
+
+		// Setup Files
+		space.WriteFile("sisho.yml", []byte(`
+llm:
+    driver: anthropic
+    model: claude-3-5-sonnet-20240620
+`))
+		space.WriteFile("aaa/bbb.txt", []byte("CURRENT_CONTENT1"))
+		space.WriteFile("aaa/ccc.txt", []byte("CURRENT_CONTENT2"))
+
+		generatedTmpl := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `%s
+UPDATED_CONTENT%d
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+
+		err := callCommand(mockCtrl, []string{"make", "aaa/bbb.txt", "aaa/ccc.txt", "-a"}, func(mocks Mocks) {
+			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+					assert.Contains(t, messages[0].Content, "aaa/bbb.txt")
+					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT1")
+					assert.Contains(t, messages[0].Content, "aaa/ccc.txt")
+					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT2")
+					return fmt.Sprintf(generatedTmpl, "aaa/bbb.txt", 1), nil
+				})
+			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+					assert.Contains(t, messages[0].Content, "aaa/bbb.txt")
+					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT1")
+					assert.Contains(t, messages[0].Content, "aaa/ccc.txt")
+					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT2")
+					return fmt.Sprintf(generatedTmpl, "aaa/ccc.txt", 2), nil
+				})
+			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+		})
+		assert.NoError(t, err)
+
+		// Assert
+		space.AssertFile("aaa/bbb.txt", func(actual []byte) {
+			assert.Equal(t, "UPDATED_CONTENT1", string(actual))
+		})
+		space.AssertFile("aaa/ccc.txt", func(actual []byte) {
+			assert.Equal(t, "UPDATED_CONTENT2", string(actual))
+		})
+	})
+
 	t.Run("標準入力から入力されたテキストがプロンプトのAdditional Instructionに反映されること", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
