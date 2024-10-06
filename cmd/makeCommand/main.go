@@ -11,7 +11,6 @@ import (
 	modelClaude "github.com/t-kuni/sisho/domain/model/chat/claude"
 	modelOpenAi "github.com/t-kuni/sisho/domain/model/chat/openAi"
 	"github.com/t-kuni/sisho/domain/model/prompts"
-	"github.com/t-kuni/sisho/domain/model/prompts/oneMoreMake"
 	"github.com/t-kuni/sisho/domain/repository/config"
 	"github.com/t-kuni/sisho/domain/repository/depsGraph"
 	"github.com/t-kuni/sisho/domain/repository/file"
@@ -131,23 +130,6 @@ func runMake(
 		}
 		fmt.Println()
 
-		// 全てのTarget Codeを予め読み込む
-		targets, err := readAllTargets(args, fileRepository)
-		if err != nil {
-			return eris.Wrap(err, "failed to read all targets")
-		}
-
-		// 知識のスキャンとロード
-		scannedKnowledge, err := knowledgeScanService.ScanKnowledge(rootDir, args)
-		if err != nil {
-			return eris.Wrap(err, "failed to scan knowledge")
-		}
-
-		knowledgeSets, err := knowledgeLoadService.LoadKnowledge(rootDir, scannedKnowledge)
-		if err != nil {
-			return eris.Wrap(err, "failed to load knowledge")
-		}
-
 		// 追加の指示の取得
 		var instructions string
 		if *promptFlag && *inputFlag {
@@ -164,19 +146,8 @@ func runMake(
 			if err != nil {
 				return eris.Wrap(err, "failed to read from stdin")
 			}
-		}
-
-		printKnowledgePaths(knowledgeSets)
-
-		// チャットモデルの選択
-		var chat chat2.Chat
-		switch cfg.LLM.Driver {
-		case "open-ai":
-			chat = modelOpenAi.NewOpenAiChat(openAiClient)
-		case "anthropic":
-			chat = modelClaude.NewClaudeChat(claudeClient)
-		default:
-			return eris.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
+			fmt.Println("Additional instructions:")
+			fmt.Println(instructions)
 		}
 
 		fmt.Printf("Using LLM: %s with model: %s\n", cfg.LLM.Driver, cfg.LLM.Model)
@@ -187,31 +158,64 @@ func runMake(
 			return eris.Wrap(err, "failed to create history directory")
 		}
 
+		// フォルダ構造情報の取得
+		var folderStructure string
+		if cfg.AdditionalKnowledge.FolderStructure {
+			folderStructure, err = folderStructureMakeService.MakeTree(rootDir)
+			if err != nil {
+				return eris.Wrap(err, "failed to get folder structure")
+			}
+		}
+
 		// 各ターゲットに対する処理
 		for i, path := range args {
-			var prompt string
-			if i == 0 {
-				folderStructure := ""
-				if cfg.AdditionalKnowledge.FolderStructure {
-					folderStructure, err = folderStructureMakeService.MakeTree(rootDir)
-					if err != nil {
-						return eris.Wrap(err, "failed to get folder structure")
-					}
-				}
+			fmt.Printf("\n--- Processing target: %s ---\n", path)
 
-				prompt, err = prompts.BuildPrompt(prompts.PromptParam{
-					KnowledgeSets:   knowledgeSets,
-					Targets:         targets,
-					Instructions:    instructions,
-					FolderStructure: folderStructure,
-				})
-			} else {
-				prompt, err = oneMoreMake.BuildPrompt(oneMoreMake.PromptParam{
-					Path: path,
-				})
+			// チャットモデルの選択
+			var chat chat2.Chat
+			switch cfg.LLM.Driver {
+			case "open-ai":
+				chat = modelOpenAi.NewOpenAiChat(openAiClient)
+			case "anthropic":
+				chat = modelClaude.NewClaudeChat(claudeClient)
+			default:
+				return eris.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
 			}
+
+			// Target Codeの読み込み
+			targets, err := readAllTargets(args, fileRepository)
+			if err != nil {
+				return eris.Wrap(err, "failed to read all targets")
+			}
+
+			// 知識のスキャンとロード
+			scannedKnowledge, err := knowledgeScanService.ScanKnowledge(rootDir, path)
+			if err != nil {
+				return eris.Wrap(err, "failed to scan knowledge")
+			}
+
+			knowledgeSets, err := knowledgeLoadService.LoadKnowledge(rootDir, scannedKnowledge)
+			if err != nil {
+				return eris.Wrap(err, "failed to load knowledge")
+			}
+
+			printKnowledgePaths(knowledgeSets)
+
+			// プロンプトの生成
+			prompt, err := prompts.BuildPrompt(prompts.PromptParam{
+				KnowledgeSets:   knowledgeSets,
+				Targets:         targets,
+				Instructions:    instructions,
+				FolderStructure: folderStructure,
+				GeneratePath:    path,
+			})
 			if err != nil {
 				return eris.Wrap(err, "failed to build prompt")
+			}
+
+			err = savePromptHistory(historyDir, i+1, prompt)
+			if err != nil {
+				return eris.Wrap(err, "failed to save prompt history")
 			}
 
 			answer, err := chat.Send(prompt, cfg.LLM.Model)
@@ -219,9 +223,9 @@ func runMake(
 				return eris.Wrap(err, "failed to send message to LLM")
 			}
 
-			err = saveHistory(historyDir, prompt, answer)
+			err = saveAnswerHistory(historyDir, i+1, answer)
 			if err != nil {
-				return eris.Wrap(err, "failed to save history")
+				return eris.Wrap(err, "failed to save answer history")
 			}
 
 			if *applyFlag {
@@ -385,24 +389,29 @@ func createHistoryDir(rootDir string, timer timer.ITimer, ksuidGenerator ksuid.I
 	return historyDir, nil
 }
 
-// saveHistory は、プロンプトと回答を履歴として保存します。
-func saveHistory(historyDir, prompt, answer string) error {
-	err := os.WriteFile(filepath.Join(historyDir, "prompt.md"), []byte(prompt), 0644)
+// savePromptHistory は、プロンプトを履歴として保存します。
+func savePromptHistory(historyDir string, index int, prompt string) error {
+	filename := fmt.Sprintf("prompt_%02d.md", index)
+	err := os.WriteFile(filepath.Join(historyDir, filename), []byte(prompt), 0644)
 	if err != nil {
 		return eris.Wrap(err, "failed to write prompt to history")
 	}
+	return nil
+}
 
-	err = os.WriteFile(filepath.Join(historyDir, "answer.md"), []byte(answer), 0644)
+// saveAnswerHistory は、回答を履歴として保存します。
+func saveAnswerHistory(historyDir string, index int, answer string) error {
+	filename := fmt.Sprintf("answer_%02d.md", index)
+	err := os.WriteFile(filepath.Join(historyDir, filename), []byte(answer), 0644)
 	if err != nil {
 		return eris.Wrap(err, "failed to write answer to history")
 	}
-
 	return nil
 }
 
 // applyChanges は、LLMの出力をファイルに適用します。
 func applyChanges(path, answer string, fileRepository file.Repository) error {
-	// この正規表現は絶対に変更しないでください
+	// NOTE: この正規表現は絶対に変更しないでください
 	// gpt-4だとコードブロックの終了からコメントの間に1文字入ることがある
 	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "(.*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
 	matches := re.FindStringSubmatch(answer)

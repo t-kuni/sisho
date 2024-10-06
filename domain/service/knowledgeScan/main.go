@@ -27,56 +27,67 @@ func NewKnowledgeScanService(
 	}
 }
 
-// ScanKnowledge performs a knowledge scan for the given target paths
-func (s *KnowledgeScanService) ScanKnowledge(rootDir string, targetPaths []string) ([]knowledge.Knowledge, error) {
+// ScanKnowledgeMultipleTarget performs a knowledge scan for multiple target paths
+func (s *KnowledgeScanService) ScanKnowledgeMultipleTarget(rootDir string, targetPaths []string) ([]knowledge.Knowledge, error) {
 	uniqueKnowledge := make(map[string]knowledge.Knowledge)
 
 	for _, targetPath := range targetPaths {
-		// Scan layer knowledge list files (.knowledge.yml)
-		knowledgeFromYml, err := s.scanKnowledgeYml(rootDir, targetPath)
+		knowledgeList, err := s.ScanKnowledge(rootDir, targetPath)
 		if err != nil {
-			return nil, eris.Wrap(err, "failed to scan .knowledge.yml files")
-		}
-
-		// Scan single file knowledge list files ([filename].know.yml)
-		knowledgeFromKnowYml, err := s.scanKnowledgeKnowYml(rootDir, targetPath)
-		if err != nil {
-			return nil, eris.Wrap(err, "failed to scan .know.yml files")
-		}
-
-		// Normalize paths for single file knowledge list files
-		err = s.knowledgePathNormalizeService.NormalizePaths(rootDir, targetPath, &knowledgeFromKnowYml)
-		if err != nil {
-			return nil, eris.Wrap(err, "failed to normalize paths for .know.yml files")
-		}
-
-		// Process auto-collect
-		autoCollectedFiles, err := s.autoCollectService.CollectAutoCollectFiles(rootDir, targetPath)
-		if err != nil {
-			return nil, eris.Wrap(err, "failed to auto-collect files")
-		}
-
-		// Combine all knowledge
-		allKnowledge := append(knowledgeFromYml, knowledgeFromKnowYml...)
-		for _, file := range autoCollectedFiles {
-			allKnowledge = append(allKnowledge, knowledge.Knowledge{
-				Path: file,
-				Kind: "specifications", // Auto-collected files are treated as specifications
-			})
+			return nil, eris.Wrapf(err, "failed to scan knowledge for target: %s", targetPath)
 		}
 
 		// Remove duplicates
-		for _, k := range allKnowledge {
+		for _, k := range knowledgeList {
 			uniqueKnowledge[k.Path] = k
 		}
 	}
 
-	var knowledgeList []knowledge.Knowledge
+	var result []knowledge.Knowledge
 	for _, k := range uniqueKnowledge {
-		knowledgeList = append(knowledgeList, k)
+		result = append(result, k)
 	}
 
-	return knowledgeList, nil
+	return result, nil
+}
+
+// ScanKnowledge performs a knowledge scan for a single target path
+func (s *KnowledgeScanService) ScanKnowledge(rootDir string, targetPath string) ([]knowledge.Knowledge, error) {
+	var allKnowledge []knowledge.Knowledge
+
+	// Scan layer knowledge list files (.knowledge.yml)
+	knowledgeFromYml, err := s.scanKnowledgeYml(rootDir, targetPath)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to scan .knowledge.yml files")
+	}
+	allKnowledge = append(allKnowledge, knowledgeFromYml...)
+
+	// Scan single file knowledge list files ([filename].know.yml)
+	knowledgeFromKnowYml, err := s.scanKnowledgeKnowYml(rootDir, targetPath)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to scan .know.yml files")
+	}
+	allKnowledge = append(allKnowledge, knowledgeFromKnowYml...)
+
+	// Process auto-collect
+	autoCollectedFiles, err := s.autoCollectService.CollectAutoCollectFiles(rootDir, targetPath)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to auto-collect files")
+	}
+	for _, file := range autoCollectedFiles {
+		allKnowledge = append(allKnowledge, knowledge.Knowledge{
+			Path: file,
+			Kind: "specifications", // Auto-collected files are treated as specifications
+		})
+	}
+
+	// Normalize paths for all knowledge
+	err = s.knowledgePathNormalizeService.NormalizePaths(rootDir, targetPath, &allKnowledge)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to normalize paths for all knowledge")
+	}
+
+	return allKnowledge, nil
 }
 
 func (s *KnowledgeScanService) scanKnowledgeYml(rootDir string, targetPath string) ([]knowledge.Knowledge, error) {
@@ -104,6 +115,7 @@ func (s *KnowledgeScanService) scanKnowledgeYml(rootDir string, targetPath strin
 			return nil, eris.Wrap(err, "failed to check if .knowledge.yml exists")
 		}
 
+		// NOTE `currentDir == rootDir` という書き方は無限ループになるので禁止
 		if currentDir == "." {
 			break
 		}

@@ -2,9 +2,6 @@ knowledge:
     - path: ../../domain/model/prompts/main.go
       kind: implementations
       chain-make: true
-    - path: ../../domain/model/prompts/oneMoreMake/main.go
-      kind: implementations
-      chain-make: true
     - path: ../../domain/service/knowledgeLoad/main.go
       kind: implementations
       chain-make: true

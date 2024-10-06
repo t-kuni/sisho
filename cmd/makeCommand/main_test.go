@@ -160,6 +160,7 @@ UPDATED_CONTENT%d
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+					assert.Len(t, messages, 1)
 					assert.Contains(t, messages[0].Content, "aaa/bbb.txt")
 					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT1")
 					assert.Contains(t, messages[0].Content, "aaa/ccc.txt")
@@ -168,8 +169,9 @@ UPDATED_CONTENT%d
 				})
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+					assert.Len(t, messages, 1)
 					assert.Contains(t, messages[0].Content, "aaa/bbb.txt")
-					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT1")
+					assert.Contains(t, messages[0].Content, "UPDATED_CONTENT1")
 					assert.Contains(t, messages[0].Content, "aaa/ccc.txt")
 					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT2")
 					return fmt.Sprintf(generatedTmpl, "aaa/ccc.txt", 2), nil
@@ -256,23 +258,33 @@ additional-knowledge:
    folder-structure: true
 `))
 		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+		space.WriteFile("aaa/bbb/ccc/eee.txt", []byte("CURRENT_CONTENT"))
 
-		generated := `
-<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
+		generatedTmpl := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `%s
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "aaa/bbb/ccc/eee.txt", "-a"}, func(mocks Mocks) {
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
-			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).Return(generated, nil)
+			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).Return(
+				fmt.Sprintf(generatedTmpl, "aaa/bbb/ccc/ddd.txt"),
+				nil,
+			)
+			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).Return(
+				fmt.Sprintf(generatedTmpl, "aaa/bbb/ccc/eee.txt"),
+				nil,
+			)
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 		})
 		assert.NoError(t, err)
 
 		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "2022-01-01T00:00:00"))
-		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "prompt.md"))
-		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "answer.md"))
+		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "prompt_01.md"))
+		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "answer_01.md"))
+		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "prompt_02.md"))
+		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "answer_02.md"))
 	})
 
 	t.Run("Knowledgeスキャンについて", func(t *testing.T) {

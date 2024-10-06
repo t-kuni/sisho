@@ -14,6 +14,7 @@ type PromptParam struct {
 	KnowledgeSets   []KnowledgeSet
 	Targets         []Target
 	FolderStructure string
+	GeneratePath    string
 }
 
 type Target struct {
