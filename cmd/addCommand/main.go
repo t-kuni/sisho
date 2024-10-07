@@ -2,6 +2,7 @@ package addCommand
 
 import (
 	"fmt"
+	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
 	"github.com/t-kuni/sisho/domain/model/kinds"
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
@@ -25,18 +26,18 @@ func NewAddCommand(knowledgeRepo knowledge.Repository) *AddCommand {
 
 			// Validate kind
 			if _, ok := kinds.GetKind(kindName); !ok {
-				return fmt.Errorf("invalid kind: %s", kindName)
+				return eris.Errorf("invalid kind: %s", kindName)
 			}
 
 			// Check if file exists
 			if _, err := os.Stat(path); os.IsNotExist(err) {
-				return fmt.Errorf("file not found: %s", path)
+				return eris.Errorf("file not found: %s", path)
 			}
 
 			// Read existing knowledge or create new
 			knowledgeFile, err := knowledgeRepo.Read(".knowledge.yml")
 			if err != nil && !os.IsNotExist(err) {
-				return err
+				return eris.Wrap(err, "failed to read .knowledge.yml")
 			}
 
 			knowList := knowledgeFile.KnowledgeList
@@ -44,7 +45,7 @@ func NewAddCommand(knowledgeRepo knowledge.Repository) *AddCommand {
 			// Add new knowledge
 			relPath, err := filepath.Rel(".", path)
 			if err != nil {
-				return err
+				return eris.Wrap(err, "failed to get relative path")
 			}
 			newKnowledge := knowledge.Knowledge{
 				Path: relPath,
@@ -55,7 +56,7 @@ func NewAddCommand(knowledgeRepo knowledge.Repository) *AddCommand {
 			// Write updated knowledge
 			err = knowledgeRepo.Write(".knowledge.yml", knowledge.KnowledgeFile{KnowledgeList: knowList})
 			if err != nil {
-				return err
+				return eris.Wrap(err, "failed to write .knowledge.yml")
 			}
 
 			fmt.Printf("Added %s to .knowledge.yml with kind %s\n", relPath, kindName)
