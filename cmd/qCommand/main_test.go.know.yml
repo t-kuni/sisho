@@ -1,0 +1,39 @@
+knowledge:
+  - path: "@/cmd/makeCommand/main.go"
+    kind: examples
+  - path: main.go
+    kind: implementations
+  - path: ../../testUtil/main.go
+    kind: implementations
+
+
+
+
+  - path: "@/domain/model/prompts/question/main.go"
+    kind: implementations
+  - path: "@/domain/model/prompts/main.go"
+    kind: implementations
+  - path: ../../domain/service/knowledgeLoad/main.go
+    kind: implementations
+  - path: ../../domain/service/knowledgeScan/main.go
+    kind: implementations
+  - path: ../../domain/external/claude/main.go
+    kind: implementations
+  - path: ../../domain/external/openAi/main.go
+    kind: implementations
+  - path: ../../domain/model/chat/claude/main.go
+    kind: implementations
+  - path: ../../domain/model/chat/openAi/main.go
+    kind: implementations
+  - path: ../../domain/repository/config/main.go
+    kind: implementations
+  - path: ../../domain/repository/file/main.go
+    kind: implementations
+  - path: ../../domain/service/autoCollect/main.go
+    kind: implementations
+  - path: ../../domain/service/configFindService/main.go
+    kind: implementations
+  - path: ../../domain/service/contextScan/main.go
+    kind: implementations
+  - path: ../../domain/service/folderStructureMake/main.go
+    kind: implementations

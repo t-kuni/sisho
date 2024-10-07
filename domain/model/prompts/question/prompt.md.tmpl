@@ -1,0 +1,34 @@
+# Question
+
+{{ .Question }}
+
+{{ if ne .FolderStructure "" }}
+# Folder Structure
+
+```
+{{ .FolderStructure }}
+```
+{{ end }}
+
+{{range .KnowledgeSets}}
+# {{ .Kind }}
+
+{{range .Knowledge}}
+```{{ .Path }}
+{{ .Content }}
+```
+
+{{end}}
+{{end}}
+
+# Target Codes (Before)
+
+{{range .Targets }}
+```{{ .Path }}
+{{ .Content }}
+```
+
+{{end}}
+
+# Answer
+

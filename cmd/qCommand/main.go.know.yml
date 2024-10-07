@@ -1,0 +1,43 @@
+knowledge:
+    - path: "@/domain/model/prompts/question/main.go"
+      kind: implementations
+      chain-make: true
+    - path: "@/domain/model/prompts/main.go"
+      kind: implementations
+      chain-make: true
+    - path: ../../domain/service/knowledgeLoad/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../../domain/service/knowledgeScan/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../../domain/external/claude/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../../domain/external/openAi/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../../domain/model/chat/claude/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../../domain/model/chat/openAi/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../../domain/repository/config/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../../domain/repository/file/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../../domain/service/autoCollect/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../../domain/service/configFindService/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../../domain/service/contextScan/main.go
+      kind: implementations
+      chain-make: true
+    - path: ../../domain/service/folderStructureMake/main.go
+      kind: implementations
+      chain-make: true

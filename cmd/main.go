@@ -7,6 +7,7 @@ import (
 	"github.com/t-kuni/sisho/cmd/extractCommand"
 	"github.com/t-kuni/sisho/cmd/initCommand"
 	"github.com/t-kuni/sisho/cmd/makeCommand"
+	"github.com/t-kuni/sisho/cmd/qCommand"
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
@@ -91,12 +92,25 @@ func NewRootCommand() *RootCommand {
 		depsGraphRepo,
 		knowledgePathNormalizeSvc,
 	)
+	qCmd := qCommand.NewQCommand(
+		claudeClient,
+		openAiClient,
+		configFindSvc,
+		configRepo,
+		fileRepo,
+		knowledgeScanSvc,
+		knowledgeLoadSvc,
+		timer.NewTimer(),
+		ksuidGenerator,
+		folderStructureMakeSvc,
+	)
 
 	cmd.AddCommand(initCmd.CobraCommand)
 	cmd.AddCommand(addCmd.CobraCommand)
 	cmd.AddCommand(makeCmd.CobraCommand)
 	cmd.AddCommand(extractCmd.CobraCommand)
 	cmd.AddCommand(depsGraphCmd.CobraCommand)
+	cmd.AddCommand(qCmd.CobraCommand)
 
 	return &RootCommand{
 		CobraCommand: cmd,
