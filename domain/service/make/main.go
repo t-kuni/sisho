@@ -139,7 +139,7 @@ func (s *MakeService) Make(paths []string, applyFlag, chainFlag bool, instructio
 		}
 
 		// 知識のスキャンとロード
-		scannedKnowledge, err := s.knowledgeScanService.ScanKnowledgeMultipleTarget(rootDir, paths)
+		scannedKnowledge, err := s.knowledgeScanService.ScanKnowledge(rootDir, path)
 		if err != nil {
 			return eris.Wrap(err, "failed to scan knowledge")
 		}

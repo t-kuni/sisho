@@ -87,7 +87,18 @@ func (s *KnowledgeScanService) ScanKnowledge(rootDir string, targetPath string) 
 		return nil, eris.Wrap(err, "failed to normalize paths for all knowledge")
 	}
 
-	return allKnowledge, nil
+	// Remove duplicates
+	uniqueKnowledge := make(map[string]knowledge.Knowledge)
+	for _, k := range allKnowledge {
+		uniqueKnowledge[k.Path] = k
+	}
+
+	var result []knowledge.Knowledge
+	for _, k := range uniqueKnowledge {
+		result = append(result, k)
+	}
+
+	return result, nil
 }
 
 func (s *KnowledgeScanService) scanKnowledgeYml(rootDir string, targetPath string) ([]knowledge.Knowledge, error) {

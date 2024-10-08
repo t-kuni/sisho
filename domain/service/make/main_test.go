@@ -143,7 +143,19 @@ llm:
     model: claude-3-5-sonnet-20240620
 `))
 		space.WriteFile("aaa/bbb.txt", []byte("CURRENT_CONTENT1"))
+		space.WriteFile("aaa/bbb-side.txt", []byte("SIDE_CONTENT1"))
+		space.WriteFile("aaa/bbb.txt.know.yml", []byte(`
+knowledge:
+  - path: bbb-side.txt
+    kind: specifications
+`))
 		space.WriteFile("aaa/ccc.txt", []byte("CURRENT_CONTENT2"))
+		space.WriteFile("aaa/ccc-side.txt", []byte("SIDE_CONTENT1"))
+		space.WriteFile("aaa/ccc.txt.know.yml", []byte(`
+knowledge:
+  - path: ccc-side.txt
+    kind: specifications
+`))
 
 		generatedTmpl := `
 <!-- CODE_BLOCK_BEGIN -->` + "```" + `%s
@@ -160,6 +172,8 @@ UPDATED_CONTENT%d
 					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT1")
 					assert.Contains(t, messages[0].Content, "aaa/ccc.txt")
 					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT2")
+					assert.Contains(t, messages[0].Content, "aaa/bbb-side.txt")
+					assert.NotContains(t, messages[0].Content, "aaa/ccc-side.txt")
 					return fmt.Sprintf(generatedTmpl, "aaa/bbb.txt", 1), nil
 				})
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
@@ -169,6 +183,8 @@ UPDATED_CONTENT%d
 					assert.Contains(t, messages[0].Content, "UPDATED_CONTENT1")
 					assert.Contains(t, messages[0].Content, "aaa/ccc.txt")
 					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT2")
+					assert.NotContains(t, messages[0].Content, "aaa/bbb-side.txt")
+					assert.Contains(t, messages[0].Content, "aaa/ccc-side.txt")
 					return fmt.Sprintf(generatedTmpl, "aaa/ccc.txt", 2), nil
 				})
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
