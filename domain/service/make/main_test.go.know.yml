@@ -1,0 +1,5 @@
+knowledge:
+  - path: main.go
+    kind: implementations
+  - path: "@/testUtil/main.go"
+    kind: implementations

@@ -15,6 +15,7 @@ import (
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
 	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
 	"github.com/t-kuni/sisho/domain/service/knowledgeScan"
+	"github.com/t-kuni/sisho/domain/service/make"
 	"github.com/t-kuni/sisho/domain/service/projectScan"
 	"github.com/t-kuni/sisho/infrastructure/external/claude"
 	"github.com/t-kuni/sisho/infrastructure/external/openAi"
@@ -62,7 +63,7 @@ func NewRootCommand() *RootCommand {
 
 	initCmd := initCommand.NewInitCommand(configRepo, fileRepo)
 	addCmd := addCommand.NewAddCommand(knowledgeRepo)
-	makeCmd := makeCommand.NewMakeCommand(
+	makeService := make.NewMakeService(
 		claudeClient,
 		openAiClient,
 		configFindSvc,
@@ -75,6 +76,7 @@ func NewRootCommand() *RootCommand {
 		ksuidGenerator,
 		folderStructureMakeSvc,
 	)
+	makeCmd := makeCommand.NewMakeCommand(makeService)
 	extractCmd := extractCommand.NewExtractCommand(
 		claudeClient,
 		openAiClient,

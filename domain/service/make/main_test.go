@@ -1,8 +1,7 @@
-package makeCommand
+package make_test
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/t-kuni/sisho/domain/external/claude"
 	"github.com/t-kuni/sisho/domain/external/openAi"
@@ -36,11 +35,10 @@ func TestMakeCommand(t *testing.T) {
 		KsuidGenerator *ksuid.MockIKsuid
 	}
 
-	callCommand := func(
+	factory := func(
 		mockCtrl *gomock.Controller,
-		args []string,
 		customizeMocks func(mocks Mocks),
-	) error {
+	) *makeService.MakeService {
 		mockTimer := timer.NewMockITimer(mockCtrl)
 		mockClaudeClient := claude.NewMockClient(mockCtrl)
 		mockOpenAiClient := openAi.NewMockClient(mockCtrl)
@@ -65,7 +63,7 @@ func TestMakeCommand(t *testing.T) {
 			KsuidGenerator: mockKsuidGenerator,
 		})
 
-		makeSvc := makeService.NewMakeService(
+		return makeService.NewMakeService(
 			mockClaudeClient,
 			mockOpenAiClient,
 			configFindSvc,
@@ -78,13 +76,6 @@ func TestMakeCommand(t *testing.T) {
 			mockKsuidGenerator,
 			folderStructureMakeSvc,
 		)
-		makeCmd := NewMakeCommand(makeSvc)
-
-		rootCmd := &cobra.Command{}
-		rootCmd.AddCommand(makeCmd.CobraCommand)
-
-		rootCmd.SetArgs(args)
-		return rootCmd.Execute()
 	}
 
 	t.Run("指定したファイルに生成されたコードが反映されること", func(t *testing.T) {
@@ -118,7 +109,7 @@ UPDATED_CONTENT
 dummy text
 `
 
-		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+		testee := factory(mockCtrl, func(mocks Mocks) {
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -129,6 +120,7 @@ dummy text
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 		})
+		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
 		assert.NoError(t, err)
 
 		// Assert
@@ -159,7 +151,7 @@ UPDATED_CONTENT%d
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
 
-		err := callCommand(mockCtrl, []string{"make", "aaa/bbb.txt", "aaa/ccc.txt", "-a"}, func(mocks Mocks) {
+		testee := factory(mockCtrl, func(mocks Mocks) {
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -182,6 +174,7 @@ UPDATED_CONTENT%d
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 		})
+		err := testee.Make([]string{"aaa/bbb.txt", "aaa/ccc.txt"}, true, false, "")
 		assert.NoError(t, err)
 
 		// Assert
@@ -191,54 +184,6 @@ UPDATED_CONTENT%d
 		space.AssertFile("aaa/ccc.txt", func(actual []byte) {
 			assert.Equal(t, "UPDATED_CONTENT2", string(actual))
 		})
-	})
-
-	t.Run("標準入力から入力されたテキストがプロンプトのAdditional Instructionに反映されること", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		space := testUtil.BeginTestSpace(t)
-		defer space.CleanUp()
-
-		// Setup Files
-		space.WriteFile("sisho.yml", []byte(`
-lang: ja
-llm:
-    driver: anthropic
-    model: claude-3-5-sonnet-20240620
-auto-collect:
-    README.md: true
-    "[TARGET_CODE].md": true
-additional-knowledge:
-    folder-structure: true
-`))
-		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
-
-		inputText := "標準入力からのテキスト\n次の行も含む"
-		testUtil.Stdin(t, inputText)
-
-		generated := `
-dummy text
-
-<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
-UPDATED_CONTENT
-` + "```" + `<!-- CODE_BLOCK_END -->
-
-dummy text
-`
-
-		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-ai"}, func(mocks Mocks) {
-			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
-			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
-					assert.Contains(t, messages[0].Content, "Additional Instruction")
-					assert.Contains(t, messages[0].Content, inputText)
-					return generated, nil
-				})
-			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
-			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
-		})
-		assert.NoError(t, err)
 	})
 
 	t.Run("履歴が保存されること", func(t *testing.T) {
@@ -268,7 +213,7 @@ additional-knowledge:
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "aaa/bbb/ccc/eee.txt", "-a"}, func(mocks Mocks) {
+		testee := factory(mockCtrl, func(mocks Mocks) {
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).Return(
 				fmt.Sprintf(generatedTmpl, "aaa/bbb/ccc/ddd.txt"),
@@ -281,6 +226,7 @@ UPDATED_CONTENT
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 		})
+		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt", "aaa/bbb/ccc/eee.txt"}, true, false, "")
 		assert.NoError(t, err)
 
 		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "2022-01-01T00:00:00"))
@@ -325,7 +271,7 @@ knowledge:
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-			err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+			testee := factory(mockCtrl, func(mocks Mocks) {
 				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -340,6 +286,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
 			assert.NoError(t, err)
 		})
 
@@ -370,7 +317,7 @@ knowledge:
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-			err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+			testee := factory(mockCtrl, func(mocks Mocks) {
 				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -383,6 +330,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
 			assert.NoError(t, err)
 		})
 
@@ -413,7 +361,7 @@ knowledge:
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-			err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+			testee := factory(mockCtrl, func(mocks Mocks) {
 				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -426,6 +374,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
 			assert.NoError(t, err)
 		})
 	})
@@ -458,7 +407,7 @@ knowledge:
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-			err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+			testee := factory(mockCtrl, func(mocks Mocks) {
 				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -470,6 +419,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
 			assert.NoError(t, err)
 		})
 
@@ -500,7 +450,7 @@ knowledge:
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-			err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+			testee := factory(mockCtrl, func(mocks Mocks) {
 				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -512,6 +462,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
 			assert.NoError(t, err)
 		})
 
@@ -542,7 +493,7 @@ knowledge:
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-			err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+			testee := factory(mockCtrl, func(mocks Mocks) {
 				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -554,6 +505,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
 			assert.NoError(t, err)
 		})
 	})
@@ -596,7 +548,7 @@ knowledge:
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+		testee := factory(mockCtrl, func(mocks Mocks) {
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -608,6 +560,7 @@ UPDATED_CONTENT
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 		})
+		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
 		assert.NoError(t, err)
 	})
 
@@ -638,7 +591,7 @@ additional-knowledge:
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+		testee := factory(mockCtrl, func(mocks Mocks) {
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -650,6 +603,7 @@ UPDATED_CONTENT
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 		})
+		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
 		assert.NoError(t, err)
 	})
 
@@ -680,7 +634,7 @@ additional-knowledge:
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
-		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-a"}, func(mocks Mocks) {
+		testee := factory(mockCtrl, func(mocks Mocks) {
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -692,11 +646,12 @@ UPDATED_CONTENT
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 		})
+		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
 		assert.NoError(t, err)
 	})
 
-	t.Run("連鎖的生成(-cオプション)について", func(t *testing.T) {
-		t.Run("連鎖的生成(-cオプション)が正常に動作すること", func(t *testing.T) {
+	t.Run("連鎖的生成について", func(t *testing.T) {
+		t.Run("連鎖的生成が正常に動作すること", func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 
@@ -731,7 +686,7 @@ UPDATED_CONTENT%d
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
 
-			err := callCommand(mockCtrl, []string{"make", "file3.go", "-ac"}, func(mocks Mocks) {
+			testee := factory(mockCtrl, func(mocks Mocks) {
 				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -751,6 +706,7 @@ UPDATED_CONTENT%d
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
+			err := testee.Make([]string{"file3.go"}, true, true, "")
 			assert.NoError(t, err)
 
 			// Assert
@@ -786,9 +742,10 @@ additional-knowledge:
 `))
 			space.WriteFile("file1.go", []byte("FILE1_CONTENT"))
 
-			err := callCommand(mockCtrl, []string{"make", "file1.go", "-c"}, func(mocks Mocks) {
+			testee := factory(mockCtrl, func(mocks Mocks) {
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			})
+			err := testee.Make([]string{"file1..go"}, false, true, "")
 
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), "failed to read deps-graph.json")
@@ -828,7 +785,7 @@ UPDATED_CONTENT%d
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
 
-			err := callCommand(mockCtrl, []string{"make", "file3.go", "-ac"}, func(mocks Mocks) {
+			testee := factory(mockCtrl, func(mocks Mocks) {
 				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -837,6 +794,7 @@ UPDATED_CONTENT%d
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
+			err := testee.Make([]string{"file3.go"}, true, true, "")
 			assert.NoError(t, err)
 
 			// Assert
@@ -876,7 +834,7 @@ UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
 
-			err := callCommand(mockCtrl, []string{"make", "file1.go", "-a"}, func(mocks Mocks) {
+			testee := factory(mockCtrl, func(mocks Mocks) {
 				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -892,6 +850,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
+			err := testee.Make([]string{"file1.go"}, true, false, "")
 			assert.NoError(t, err)
 		})
 
@@ -926,7 +885,7 @@ UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 `
 
-			err := callCommand(mockCtrl, []string{"make", "file1.go", "-a"}, func(mocks Mocks) {
+			testee := factory(mockCtrl, func(mocks Mocks) {
 				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (string, error) {
@@ -943,6 +902,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
+			err := testee.Make([]string{"file1.go"}, true, false, "")
 			assert.NoError(t, err)
 		})
 	})
