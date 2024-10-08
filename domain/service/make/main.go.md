@@ -13,20 +13,20 @@ MakeServiceは、LLMを使用してTarget Codeを生成するサービスです�
 
 ## メソッド
 
-# Make(paths []string, applyFlag, chainFlag bool, instructions string) error
+# Make()
 
 LLMを使ってpathsで指定したファイルを生成する
 
 * 引数
     * paths
-        * カレントディレクトリからの相対パスでTarget Codeを指定する
+        * Target Codeのパス（プロジェクトルートからの相対パス）
         * LLMで生成した結果は、ファイルに直接書き込まず、標準出力に出力する
     * applyFlag
-        * LLMの出力をファイルに反映します
+        * trueの場合、LLMの出力をファイルに反映します
             * LLMの出力には余分な文章が含まれる可能性があるため、 Capturable Code Blockの仕様に基づいて切り出した結果をファイルに反映します
         * 標準出力には反映したファイルのパスと差分を出力します。
     * chainFlag
-        * 連鎖的生成を行う 
+        * trueの場合、連鎖的生成を行う 
             * 指定されたTarget Codeに依存しているファイルを依存グラフ（.sisho/deps-graph.json）から再帰的に取得し、それらのファイルもTarget Codeとして扱う
         * Target Codeの順番は依存グラフの深度の浅い順に並べる
         * deps-graph.jsonが存在しない場合はエラーを出力する

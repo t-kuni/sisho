@@ -3,3 +3,5 @@ knowledge:
     kind: implementations
   - path: "@/testUtil/main.go"
     kind: implementations
+  - path: "@/domain/service/make/main.go.md"
+    kind: specifications

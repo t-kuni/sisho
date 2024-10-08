@@ -1,7 +1,8 @@
 knowledge:
+    - path: ../../testUtil/main.go
+      kind: implementations
     - path: '@/domain/service/make/main.go'
       kind: implementations
-      chain-make: true
     - path: '@/domain/service/autoCollect/main.go'
       kind: implementations
     - path: '@/domain/service/contextScan/main.go'
