@@ -157,7 +157,7 @@ func runExtract(
 }
 
 func extractKnowledgeList(answer string, knowledgeListPath string, rootDir string, knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService) ([]knowledge.Knowledge, error) {
-	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(knowledgeListPath) + "(.*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
+	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(knowledgeListPath) + "([^`]*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
 	matches := re.FindStringSubmatch(answer)
 
 	if len(matches) < 3 {

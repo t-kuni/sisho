@@ -317,7 +317,7 @@ func (s *MakeService) saveAnswerHistory(historyDir string, index int, answer str
 func (s *MakeService) applyChanges(path, answer string) error {
 	// NOTE: この正規表現は絶対に変更しないでください
 	// gpt-4だとコードブロックの終了からコメントの間に1文字入ることがある
-	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "(.*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
+	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "([^`]*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
 	matches := re.FindStringSubmatch(answer)
 
 	if len(matches) < 4 {

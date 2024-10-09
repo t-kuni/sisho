@@ -87,15 +87,9 @@ func TestMakeCommand(t *testing.T) {
 
 		// Setup Files
 		space.WriteFile("sisho.yml", []byte(`
-lang: ja
 llm:
     driver: anthropic
     model: claude-3-5-sonnet-20240620
-auto-collect:
-    README.md: true
-    "[TARGET_CODE].md": true
-additional-knowledge:
-    folder-structure: true
 `))
 		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
 
@@ -103,6 +97,58 @@ additional-knowledge:
 dummy text
 
 <!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+
+dummy text
+`
+
+		testee := factory(mockCtrl, func(mocks Mocks) {
+			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
+					assert.Contains(t, messages[0].Content, "aaa/bbb/ccc/ddd.txt")
+					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT")
+					return claude.GenerationResult{
+						Content:           generated,
+						TerminationReason: "success",
+					}, nil
+				})
+			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+		})
+		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
+		assert.NoError(t, err)
+
+		// Assert
+		space.AssertFile("aaa/bbb/ccc/ddd.txt", func(actual []byte) {
+			assert.Equal(t, "UPDATED_CONTENT", string(actual))
+		})
+	})
+
+	t.Run("コードブロックが複数生成されてしまった場合も正しくパースできること", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		space := testUtil.BeginTestSpace(t)
+		defer space.CleanUp()
+
+		// Setup Files
+		space.WriteFile("sisho.yml", []byte(`
+llm:
+    driver: anthropic
+    model: claude-3-5-sonnet-20240620
+`))
+		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+
+		generated := `
+dummy text
+
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/eee.txt
 UPDATED_CONTENT
 ` + "```" + `<!-- CODE_BLOCK_END -->
 
