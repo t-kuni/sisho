@@ -131,7 +131,7 @@ func runExtract(
 		return eris.Wrap(err, "failed to send message to LLM")
 	}
 
-	knowledgeList, err := extractKnowledgeList(answer, relativeKnowledgeListPath, rootDir, knowledgePathNormalizeService)
+	knowledgeList, err := extractKnowledgeList(answer.Content, relativeKnowledgeListPath, rootDir, knowledgePathNormalizeService)
 	if err != nil {
 		return eris.Wrap(err, "failed to extract knowledge list")
 	}
@@ -196,7 +196,7 @@ func mergeKnowledgeLists(existing, new []knowledge.Knowledge, knowledgePathNorma
 	for _, k := range new {
 		normalizedPath, _ := knowledgePathNormalizeService.NormalizePath(rootDir, filepath.Dir(knowledgeListPath), k.Path)
 		if !seen[normalizedPath] {
-			// NOTE: LLMの回答から抽出した知識リストのパスは@表記の相対パスに直す
+			// LLMの回答から抽出した知識リストのパスは@表記の相対パスに直す
 			k.Path = "@/" + filepath.Clean(k.Path)
 			merged = append(merged, k)
 			seen[normalizedPath] = true

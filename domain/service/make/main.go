@@ -95,8 +95,8 @@ func (s *MakeService) Make(paths []string, applyFlag, chainFlag bool, instructio
 
 	// Target Codeの一覧を標準出力に出力
 	fmt.Println("Target Codes:")
-	for _, arg := range paths {
-		fmt.Printf("- %s\n", arg)
+	for _, path := range paths {
+		fmt.Printf("- %s\n", path)
 	}
 	fmt.Println()
 
@@ -168,24 +168,28 @@ func (s *MakeService) Make(paths []string, applyFlag, chainFlag bool, instructio
 			return eris.Wrap(err, "failed to save prompt history")
 		}
 
-		answer, err := chat.Send(prompt, cfg.LLM.Model)
+		result, err := chat.Send(prompt, cfg.LLM.Model)
 		if err != nil {
 			return eris.Wrap(err, "failed to send message to LLM")
 		}
 
-		err = s.saveAnswerHistory(historyDir, i+1, answer)
+		err = s.saveAnswerHistory(historyDir, i+1, result.Content)
 		if err != nil {
 			return eris.Wrap(err, "failed to save answer history")
 		}
 
+		if result.FinishReason != "" && result.FinishReason != "stop" {
+			fmt.Printf("Warning: LLM response was cut off. Reason: %s\n", result.FinishReason)
+		}
+
 		if applyFlag {
-			err = s.applyChanges(path, answer)
+			err = s.applyChanges(path, result.Content)
 			if err != nil {
 				return eris.Wrapf(err, "failed to apply changes to %s", path)
 			}
 			fmt.Printf("Applied changes to %s\n", path)
 		} else {
-			fmt.Println(answer)
+			fmt.Println(result.Content)
 		}
 	}
 

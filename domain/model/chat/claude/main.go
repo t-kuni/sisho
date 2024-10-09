@@ -17,7 +17,7 @@ func NewClaudeChat(client claude.Client) *ClaudeChat {
 	}
 }
 
-func (c *ClaudeChat) Send(prompt string, model string) (string, error) {
+func (c *ClaudeChat) Send(prompt string, model string) (chat.SendResult, error) {
 	// Add user message to history
 	c.history = append(c.history, chat.Message{Role: "user", Content: prompt})
 
@@ -30,13 +30,16 @@ func (c *ClaudeChat) Send(prompt string, model string) (string, error) {
 	// Send message to Claude API
 	response, err := c.client.SendMessage(claudeMessages, model)
 	if err != nil {
-		return "", err
+		return chat.SendResult{}, err
 	}
 
 	// Add assistant response to history
-	c.history = append(c.history, chat.Message{Role: "assistant", Content: response})
+	c.history = append(c.history, chat.Message{Role: "assistant", Content: response.Content})
 
-	return response, nil
+	return chat.SendResult{
+		Content:      response.Content,
+		FinishReason: response.TerminationReason,
+	}, nil
 }
 
 func (c *ClaudeChat) GetHistory() []chat.Message {

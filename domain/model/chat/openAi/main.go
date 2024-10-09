@@ -17,7 +17,7 @@ func NewOpenAiChat(client openAi.Client) *OpenAiChat {
 	}
 }
 
-func (o *OpenAiChat) Send(prompt string, model string) (string, error) {
+func (o *OpenAiChat) Send(prompt string, model string) (chat.SendResult, error) {
 	// Add user message to history
 	o.history = append(o.history, chat.Message{Role: "user", Content: prompt})
 
@@ -30,13 +30,16 @@ func (o *OpenAiChat) Send(prompt string, model string) (string, error) {
 	// Send message to OpenAI API
 	response, err := o.client.SendMessage(openAiMessages, model)
 	if err != nil {
-		return "", err
+		return chat.SendResult{}, err
 	}
 
 	// Add assistant response to history
-	o.history = append(o.history, chat.Message{Role: "assistant", Content: response})
+	o.history = append(o.history, chat.Message{Role: "assistant", Content: response.Content})
 
-	return response, nil
+	return chat.SendResult{
+		Content:      response.Content,
+		FinishReason: response.TerminationReason,
+	}, nil
 }
 
 func (o *OpenAiChat) GetHistory() []chat.Message {

@@ -1,7 +1,39 @@
 knowledge:
-  - path: main.go
-    kind: implementations
-  - path: "@/testUtil/main.go"
-    kind: implementations
-  - path: "@/domain/service/make/main.go.md"
-    kind: specifications
+    - path: main.go
+      kind: implementations
+    - path: '@/testUtil/main.go'
+      kind: implementations
+    - path: '@/domain/service/make/main.go.md'
+      kind: specifications
+    - path: '@/domain/service/make/main.go'
+      kind: implementations
+    - path: '@/domain/service/autoCollect/main.go'
+      kind: implementations
+    - path: '@/domain/service/configFindService/main.go'
+      kind: implementations
+    - path: '@/domain/service/contextScan/main.go'
+      kind: implementations
+    - path: '@/domain/service/folderStructureMake/main.go'
+      kind: implementations
+    - path: '@/domain/service/knowledgeLoad/main.go'
+      kind: implementations
+    - path: '@/domain/service/knowledgePathNormalize/main.go'
+      kind: implementations
+    - path: '@/domain/service/knowledgeScan/main.go'
+      kind: implementations
+    - path: '@/domain/external/claude/main.go'
+      kind: implementations
+    - path: '@/domain/external/openAi/main.go'
+      kind: implementations
+    - path: '@/domain/repository/file/main.go'
+      kind: implementations
+    - path: '@/domain/system/ksuid/main.go'
+      kind: implementations
+    - path: '@/domain/system/timer/main.go'
+      kind: implementations
+    - path: '@/infrastructure/repository/config/main.go'
+      kind: implementations
+    - path: '@/infrastructure/repository/depsGraph/main.go'
+      kind: implementations
+    - path: '@/infrastructure/repository/knowledge/main.go'
+      kind: implementations

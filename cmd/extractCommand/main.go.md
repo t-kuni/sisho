@@ -25,3 +25,4 @@ command extract [path]
 * 知識リストの重複チェックは knowledgePathNormalize で正規化したパス同士で比較する（この正規化したパスは保存には使わない）
 * フォルダ構造情報をプロンプトに追加する
   * folderStructureMakeを使う
+* 生成が途中で終了した場合はエラー扱いとして、その理由を標準出力に出力する

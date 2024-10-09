@@ -26,7 +26,7 @@ func NewClaudeClient() *ClaudeClient {
 }
 
 // SendMessage sends an array of Message to Claude API and waits for a response.
-func (c *ClaudeClient) SendMessage(messages []claude.Message, model string) (string, error) {
+func (c *ClaudeClient) SendMessage(messages []claude.Message, model string) (claude.GenerationResult, error) {
 	client := resty.New()
 
 	requestBody := ClaudeRequest{
@@ -38,7 +38,7 @@ func (c *ClaudeClient) SendMessage(messages []claude.Message, model string) (str
 
 	jsonBody, err := json.Marshal(requestBody)
 	if err != nil {
-		return "", err
+		return claude.GenerationResult{}, err
 	}
 
 	resp, err := client.R().
@@ -50,13 +50,13 @@ func (c *ClaudeClient) SendMessage(messages []claude.Message, model string) (str
 		Post("https://api.anthropic.com/v1/messages")
 
 	if err != nil {
-		return "", err
+		return claude.GenerationResult{}, err
 	}
 	defer resp.RawBody().Close()
 
 	if resp.StatusCode() != 200 {
 		b, _ := io.ReadAll(resp.RawBody())
-		return "", fmt.Errorf("API request failed with status code: %d and response: %s", resp.StatusCode(), string(b))
+		return claude.GenerationResult{}, fmt.Errorf("API request failed with status code: %d and response: %s", resp.StatusCode(), string(b))
 	}
 
 	return processStreamResponse(resp.RawBody())
@@ -75,9 +75,10 @@ func convertMessages(messages []claude.Message) []Message {
 }
 
 // processStreamResponse handles the streaming response from Claude API.
-func processStreamResponse(body io.ReadCloser) (string, error) {
+func processStreamResponse(body io.ReadCloser) (claude.GenerationResult, error) {
 	reader := bufio.NewReader(body)
 	var fullResponse strings.Builder
+	var terminationReason string
 
 	for {
 		line, err := reader.ReadBytes('\n')
@@ -85,7 +86,7 @@ func processStreamResponse(body io.ReadCloser) (string, error) {
 			if err == io.EOF {
 				break
 			}
-			return "", err
+			return claude.GenerationResult{}, err
 		}
 
 		line = bytes.TrimSpace(line)
@@ -100,15 +101,20 @@ func processStreamResponse(body io.ReadCloser) (string, error) {
 
 		var streamResp StreamResponse
 		if err := json.Unmarshal(data, &streamResp); err != nil {
-			return "", err
+			return claude.GenerationResult{}, err
 		}
 
 		if streamResp.Type == "content_block_delta" {
 			fullResponse.WriteString(streamResp.Delta.Text)
+		} else if streamResp.Type == "message_stop" {
+			terminationReason = streamResp.Message.StopReason
 		}
 	}
 
-	return fullResponse.String(), nil
+	return claude.GenerationResult{
+		Content:           fullResponse.String(),
+		TerminationReason: terminationReason,
+	}, nil
 }
 
 type ClaudeRequest struct {
@@ -130,7 +136,8 @@ type StreamResponse struct {
 			Text string `json:"text"`
 			Type string `json:"type"`
 		} `json:"content"`
-		Role string `json:"role"`
+		Role       string `json:"role"`
+		StopReason string `json:"stop_reason"`
 	} `json:"message"`
 	Delta struct {
 		Type string `json:"type"`

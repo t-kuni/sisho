@@ -34,6 +34,7 @@ type apiResponse struct {
 		Delta struct {
 			Content string `json:"content"`
 		} `json:"delta"`
+		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
 }
 
@@ -47,7 +48,7 @@ func NewOpenAIClient() *OpenAIClient {
 	}
 }
 
-func (c *OpenAIClient) SendMessage(messages []domainOpenAI.Message, model string) (string, error) {
+func (c *OpenAIClient) SendMessage(messages []domainOpenAI.Message, model string) (domainOpenAI.GenerationResult, error) {
 	apiMessages := make([]apiMessageItem, len(messages))
 	for i, msg := range messages {
 		apiMessages[i] = apiMessageItem{
@@ -64,7 +65,7 @@ func (c *OpenAIClient) SendMessage(messages []domainOpenAI.Message, model string
 
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request body: %w", err)
+		return domainOpenAI.GenerationResult{}, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
 	resp, err := c.httpClient.R().
@@ -73,20 +74,22 @@ func (c *OpenAIClient) SendMessage(messages []domainOpenAI.Message, model string
 		Post(apiURL)
 
 	if err != nil {
-		return "", fmt.Errorf("failed to send request: %w", err)
+		return domainOpenAI.GenerationResult{}, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.RawBody().Close()
 
 	if resp.StatusCode() != 200 {
-		return "", fmt.Errorf("API request failed with status code %d", resp.StatusCode())
+		bodyBytes, _ := io.ReadAll(resp.RawBody())
+		return domainOpenAI.GenerationResult{}, fmt.Errorf("API request failed with status code %d and response: %s", resp.StatusCode(), string(bodyBytes))
 	}
 
 	return processStreamResponse(resp.RawBody())
 }
 
-func processStreamResponse(body io.ReadCloser) (string, error) {
+func processStreamResponse(body io.ReadCloser) (domainOpenAI.GenerationResult, error) {
 	reader := bufio.NewReader(body)
 	var fullResponse strings.Builder
+	var terminationReason string
 
 	for {
 		line, err := reader.ReadBytes('\n')
@@ -94,7 +97,7 @@ func processStreamResponse(body io.ReadCloser) (string, error) {
 			if err == io.EOF {
 				break
 			}
-			return "", fmt.Errorf("error reading stream: %w", err)
+			return domainOpenAI.GenerationResult{}, fmt.Errorf("error reading stream: %w", err)
 		}
 
 		line = bytes.TrimSpace(line)
@@ -109,13 +112,19 @@ func processStreamResponse(body io.ReadCloser) (string, error) {
 
 		var streamResp apiResponse
 		if err := json.Unmarshal(data, &streamResp); err != nil {
-			return "", fmt.Errorf("failed to unmarshal stream data: %w", err)
+			return domainOpenAI.GenerationResult{}, fmt.Errorf("failed to unmarshal stream data: %w", err)
 		}
 
 		if len(streamResp.Choices) > 0 {
 			fullResponse.WriteString(streamResp.Choices[0].Delta.Content)
+			if streamResp.Choices[0].FinishReason != "" {
+				terminationReason = streamResp.Choices[0].FinishReason
+			}
 		}
 	}
 
-	return fullResponse.String(), nil
+	return domainOpenAI.GenerationResult{
+		Content:           fullResponse.String(),
+		TerminationReason: terminationReason,
+	}, nil
 }

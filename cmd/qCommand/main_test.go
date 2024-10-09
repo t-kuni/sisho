@@ -99,11 +99,14 @@ llm:
 
 		err := callCommand(mockCtrl, []string{"q", "main.go", "-i"}, func(mocks Mocks) {
 			mocks.OpenAiClient.EXPECT().SendMessage(gomock.Any(), "gpt-4").
-				DoAndReturn(func(messages []openAi.Message, model string) (string, error) {
+				DoAndReturn(func(messages []openAi.Message, model string) (openAi.GenerationResult, error) {
 					assert.Contains(t, messages[0].Content, "main.go")
 					assert.Contains(t, messages[0].Content, "package main")
 					assert.Contains(t, messages[0].Content, "This is a test question")
-					return "LLM Response", nil
+					return openAi.GenerationResult{
+						Content:           "LLM Response",
+						TerminationReason: "success",
+					}, nil
 				})
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2021-01-02T15:04:05Z")).AnyTimes()
@@ -133,12 +136,15 @@ llm:
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2021-01-02T15:04:05Z")).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid").AnyTimes()
-			mocks.OpenAiClient.EXPECT().SendMessage(gomock.Any(), "gpt-4").DoAndReturn(func(messages []openAi.Message, model string) (string, error) {
+			mocks.OpenAiClient.EXPECT().SendMessage(gomock.Any(), "gpt-4").DoAndReturn(func(messages []openAi.Message, model string) (openAi.GenerationResult, error) {
 				assert.Contains(t, messages[0].Content, "main.go")
 				assert.Contains(t, messages[0].Content, "package main")
 				assert.Contains(t, messages[0].Content, "helper.go")
 				assert.Contains(t, messages[0].Content, "package helper")
-				return "LLM Response", nil
+				return openAi.GenerationResult{
+					Content:           "LLM Response",
+					TerminationReason: "success",
+				}, nil
 			})
 		})
 
@@ -166,12 +172,15 @@ additional-knowledge:
 
 		err := callCommand(mockCtrl, []string{"q", "main.go"}, func(mocks Mocks) {
 			mocks.OpenAiClient.EXPECT().SendMessage(gomock.Any(), "gpt-4").
-				DoAndReturn(func(messages []openAi.Message, model string) (string, error) {
+				DoAndReturn(func(messages []openAi.Message, model string) (openAi.GenerationResult, error) {
 					assert.Contains(t, messages[0].Content, "main.go")
 					assert.Contains(t, messages[0].Content, "package main")
 					assert.Contains(t, messages[0].Content, "/subdir")
 					assert.Contains(t, messages[0].Content, "helper.go")
-					return "LLM Response", nil
+					return openAi.GenerationResult{
+						Content:           "LLM Response",
+						TerminationReason: "success",
+					}, nil
 				})
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2021-01-02T15:04:05Z")).AnyTimes()
@@ -204,12 +213,15 @@ knowledge:
 
 		err := callCommand(mockCtrl, []string{"q", "main.go"}, func(mocks Mocks) {
 			mocks.OpenAiClient.EXPECT().SendMessage(gomock.Any(), "gpt-4").
-				DoAndReturn(func(messages []openAi.Message, model string) (string, error) {
+				DoAndReturn(func(messages []openAi.Message, model string) (openAi.GenerationResult, error) {
 					assert.Contains(t, messages[0].Content, "main.go")
 					assert.Contains(t, messages[0].Content, "package main")
 					assert.Contains(t, messages[0].Content, "example.go")
 					assert.Contains(t, messages[0].Content, "package example")
-					return "LLM Response", nil
+					return openAi.GenerationResult{
+						Content:           "LLM Response",
+						TerminationReason: "success",
+					}, nil
 				})
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2021-01-02T15:04:05Z")).AnyTimes()

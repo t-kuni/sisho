@@ -6,7 +6,8 @@ package openAi
 type Client interface {
 	// SendMessage はメッセージを送信し、応答を返します。
 	// モデルのバリデーションは行いません。
-	SendMessage(messages []Message, model string) (string, error)
+	// ステータスコード200以外が返却された場合、レスポンスボディ全体をエラーメッセージに含めます。
+	SendMessage(messages []Message, model string) (GenerationResult, error)
 }
 
 // Message はOpenAI APIに送信するメッセージの構造を表します。
@@ -51,4 +52,10 @@ func ValidateModel(model string) bool {
 		}
 	}
 	return false
+}
+
+// GenerationResult は生成結果を表す構造体です。
+type GenerationResult struct {
+	Content           string
+	TerminationReason string
 }

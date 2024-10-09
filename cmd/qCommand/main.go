@@ -27,12 +27,10 @@ import (
 	"github.com/t-kuni/sisho/domain/system/timer"
 )
 
-// QCommand は、qコマンドの構造体です。
 type QCommand struct {
 	CobraCommand *cobra.Command
 }
 
-// NewQCommand は、QCommandの新しいインスタンスを作成します。
 func NewQCommand(
 	claudeClient claude.Client,
 	openAiClient openAi.Client,
@@ -65,7 +63,6 @@ func NewQCommand(
 	}
 }
 
-// runQ は、qコマンドの主要なロジックを実行します。
 func runQ(
 	promptFlag *bool,
 	inputFlag *bool,
@@ -81,7 +78,6 @@ func runQ(
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
 ) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		// 設定ファイルの読み込み
 		configPath, err := configFindService.FindConfig()
 		if err != nil {
 			return eris.Wrap(err, "failed to find config file")
@@ -94,14 +90,12 @@ func runQ(
 
 		rootDir := configFindService.GetProjectRoot(configPath)
 
-		// Target Codeの一覧を標準出力に出力
 		fmt.Println("Target Codes:")
 		for _, arg := range args {
 			fmt.Printf("- %s\n", arg)
 		}
 		fmt.Println()
 
-		// 追加の指示の取得
 		var instructions string
 		if *promptFlag && *inputFlag {
 			return eris.New("cannot use both -p and -i flags")
@@ -123,13 +117,11 @@ func runQ(
 
 		fmt.Printf("Using LLM: %s with model: %s\n", cfg.LLM.Driver, cfg.LLM.Model)
 
-		// 履歴ディレクトリの作成
 		historyDir, err := createHistoryDir(rootDir, timer, ksuidGenerator)
 		if err != nil {
 			return eris.Wrap(err, "failed to create history directory")
 		}
 
-		// フォルダ構造情報の取得
 		var folderStructure string
 		if cfg.AdditionalKnowledge.FolderStructure {
 			folderStructure, err = folderStructureMakeService.MakeTree(rootDir)
@@ -138,7 +130,6 @@ func runQ(
 			}
 		}
 
-		// チャットモデルの選択
 		var chat chat.Chat
 		switch cfg.LLM.Driver {
 		case "open-ai":
@@ -149,13 +140,11 @@ func runQ(
 			return eris.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
 		}
 
-		// Target Codeの読み込み
 		targets, err := readAllTargets(args, fileRepository)
 		if err != nil {
 			return eris.Wrap(err, "failed to read all targets")
 		}
 
-		// 知識のスキャンとロード
 		scannedKnowledge, err := knowledgeScanService.ScanKnowledgeMultipleTarget(rootDir, args)
 		if err != nil {
 			return eris.Wrap(err, "failed to scan knowledge")
@@ -168,7 +157,6 @@ func runQ(
 
 		printKnowledgePaths(knowledgeSets)
 
-		// プロンプトの生成
 		prompt, err := question.BuildPrompt(question.PromptParam{
 			KnowledgeSets:   knowledgeSets,
 			Targets:         targets,
@@ -189,18 +177,17 @@ func runQ(
 			return eris.Wrap(err, "failed to send message to LLM")
 		}
 
-		err = saveAnswerHistory(historyDir, answer)
+		err = saveAnswerHistory(historyDir, answer.Content)
 		if err != nil {
 			return eris.Wrap(err, "failed to save answer history")
 		}
 
-		fmt.Println(answer)
+		fmt.Println(answer.Content)
 
 		return nil
 	}
 }
 
-// getAdditionalInstructions は、ユーザーから追加の指示を取得します。
 func getAdditionalInstructions() (string, error) {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
@@ -231,7 +218,6 @@ func getAdditionalInstructions() (string, error) {
 	return strings.TrimSpace(string(instructions)), nil
 }
 
-// readStdin は標準入力からテキストを読み取ります。
 func readStdin() (string, error) {
 	stdin, err := io.ReadAll(os.Stdin)
 	if err != nil {
@@ -240,7 +226,6 @@ func readStdin() (string, error) {
 	return strings.TrimSpace(string(stdin)), nil
 }
 
-// printKnowledgePaths は、ナレッジのパスを出力します。
 func printKnowledgePaths(knowledgeSets []prompts.KnowledgeSet) {
 	fmt.Println("Knowledge paths:")
 	for _, set := range knowledgeSets {
@@ -251,7 +236,6 @@ func printKnowledgePaths(knowledgeSets []prompts.KnowledgeSet) {
 	fmt.Println()
 }
 
-// readAllTargets は、指定されたパスの全てのターゲットを読み込みます。
 func readAllTargets(paths []string, fileRepository file.Repository) ([]prompts.Target, error) {
 	targets := make([]prompts.Target, len(paths))
 	for i, path := range paths {
@@ -264,7 +248,6 @@ func readAllTargets(paths []string, fileRepository file.Repository) ([]prompts.T
 	return targets, nil
 }
 
-// readTarget は、指定されたパスのターゲットを読み込みます。
 func readTarget(path string, fileRepository file.Repository) (prompts.Target, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -280,7 +263,6 @@ func readTarget(path string, fileRepository file.Repository) (prompts.Target, er
 	}, nil
 }
 
-// createHistoryDir は、履歴ディレクトリを作成します。
 func createHistoryDir(rootDir string, timer timer.ITimer, ksuidGenerator ksuid.IKsuid) (string, error) {
 	historyBaseDir := filepath.Join(rootDir, ".sisho", "history", "questions")
 	err := os.MkdirAll(historyBaseDir, 0755)
@@ -304,7 +286,6 @@ func createHistoryDir(rootDir string, timer timer.ITimer, ksuidGenerator ksuid.I
 	return historyDir, nil
 }
 
-// savePromptHistory は、プロンプトを履歴として保存します。
 func savePromptHistory(historyDir string, prompt string) error {
 	filename := "prompt.md"
 	err := os.WriteFile(filepath.Join(historyDir, filename), []byte(prompt), 0644)
@@ -314,7 +295,6 @@ func savePromptHistory(historyDir string, prompt string) error {
 	return nil
 }
 
-// saveAnswerHistory は、回答を履歴として保存します。
 func saveAnswerHistory(historyDir string, answer string) error {
 	filename := "answer.md"
 	err := os.WriteFile(filepath.Join(historyDir, filename), []byte(answer), 0644)

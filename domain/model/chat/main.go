@@ -3,7 +3,7 @@
 package chat
 
 type Chat interface {
-	Send(prompt string, model string) (string, error)
+	Send(prompt string, model string) (SendResult, error)
 }
 
 type Message struct {
@@ -14,4 +14,10 @@ type Message struct {
 type ChatWithHistory interface {
 	Chat
 	GetHistory() []Message
+}
+
+// SendResult represents the result of a chat interaction
+type SendResult struct {
+	Content      string
+	FinishReason string
 }

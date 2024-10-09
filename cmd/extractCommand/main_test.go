@@ -93,7 +93,10 @@ knowledge:
 `
 
 		err := callCommand(mockCtrl, []string{"extract", "dir/target.go"}, func(mocks Mocks) {
-			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).Return(generatedKnowledge, nil)
+			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).Return(claude.GenerationResult{
+				Content:           generatedKnowledge,
+				TerminationReason: "success",
+			}, nil)
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 		})
 
@@ -147,7 +150,10 @@ knowledge:
 `
 
 		err := callCommand(mockCtrl, []string{"extract", "target.go"}, func(mocks Mocks) {
-			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).Return(generatedKnowledge, nil)
+			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).Return(claude.GenerationResult{
+				Content:           generatedKnowledge,
+				TerminationReason: "success",
+			}, nil)
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 		})
 
@@ -199,9 +205,12 @@ knowledge:
 
 		err := callCommand(mockCtrl, []string{"extract", "target.go"}, func(mocks Mocks) {
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 					capturedPrompt = messages[0].Content
-					return generatedKnowledge, nil
+					return claude.GenerationResult{
+						Content:           generatedKnowledge,
+						TerminationReason: "success",
+					}, nil
 				})
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 		})
@@ -250,7 +259,7 @@ knowledge:
 
 		err := callCommand(mockCtrl, []string{"extract", "target.go"}, func(mocks Mocks) {
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 					assert.Contains(t, messages[0].Content, "# Folder Structure")
 					assert.Contains(t, messages[0].Content, "target.go")
 					assert.Contains(t, messages[0].Content, "/dir1")
@@ -259,7 +268,10 @@ knowledge:
 					assert.NotContains(t, messages[0].Content, "/dir2")
 					assert.NotContains(t, messages[0].Content, "/subdir")
 					assert.NotContains(t, messages[0].Content, "file2.go")
-					return generatedKnowledge, nil
+					return claude.GenerationResult{
+						Content:           generatedKnowledge,
+						TerminationReason: "success",
+					}, nil
 				})
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 		})

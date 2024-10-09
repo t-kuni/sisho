@@ -110,22 +110,28 @@ UPDATED_CONTENT%d
 		err := callCommand(mockCtrl, []string{"make", "aaa/bbb.txt", "aaa/ccc.txt", "-a"}, func(mocks Mocks) {
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 					assert.Len(t, messages, 1)
 					assert.Contains(t, messages[0].Content, "aaa/bbb.txt")
 					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT1")
 					assert.Contains(t, messages[0].Content, "aaa/ccc.txt")
 					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT2")
-					return fmt.Sprintf(generatedTmpl, "aaa/bbb.txt", 1), nil
+					return claude.GenerationResult{
+						Content:           fmt.Sprintf(generatedTmpl, "aaa/bbb.txt", 1),
+						TerminationReason: "success",
+					}, nil
 				})
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 					assert.Len(t, messages, 1)
 					assert.Contains(t, messages[0].Content, "aaa/bbb.txt")
 					assert.Contains(t, messages[0].Content, "UPDATED_CONTENT1")
 					assert.Contains(t, messages[0].Content, "aaa/ccc.txt")
 					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT2")
-					return fmt.Sprintf(generatedTmpl, "aaa/ccc.txt", 2), nil
+					return claude.GenerationResult{
+						Content:           fmt.Sprintf(generatedTmpl, "aaa/ccc.txt", 2),
+						TerminationReason: "success",
+					}, nil
 				})
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
@@ -178,10 +184,13 @@ dummy text
 		err := callCommand(mockCtrl, []string{"make", "aaa/bbb/ccc/ddd.txt", "-ai"}, func(mocks Mocks) {
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 					assert.Contains(t, messages[0].Content, "Additional Instruction")
 					assert.Contains(t, messages[0].Content, inputText)
-					return generated, nil
+					return claude.GenerationResult{
+						Content:           generated,
+						TerminationReason: "success",
+					}, nil
 				})
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
@@ -227,19 +236,28 @@ UPDATED_CONTENT%d
 		err := callCommand(mockCtrl, []string{"make", "file3.go", "-ac"}, func(mocks Mocks) {
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 					//assert.Contains(t, messages[0].Content, "FILE3_CONTENT")
-					return fmt.Sprintf(generatedFormat, "file3.go", 1), nil
+					return claude.GenerationResult{
+						Content:           fmt.Sprintf(generatedFormat, "file3.go", 1),
+						TerminationReason: "success",
+					}, nil
 				})
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 					//assert.Contains(t, messages[0].Content, "FILE2_CONTENT")
-					return fmt.Sprintf(generatedFormat, "file2.go", 2), nil
+					return claude.GenerationResult{
+						Content:           fmt.Sprintf(generatedFormat, "file2.go", 2),
+						TerminationReason: "success",
+					}, nil
 				})
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (string, error) {
+				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 					//assert.Contains(t, messages[0].Content, "FILE1_CONTENT")
-					return fmt.Sprintf(generatedFormat, "file1.go", 3), nil
+					return claude.GenerationResult{
+						Content:           fmt.Sprintf(generatedFormat, "file1.go", 3),
+						TerminationReason: "success",
+					}, nil
 				})
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")

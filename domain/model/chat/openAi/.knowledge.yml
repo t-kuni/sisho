@@ -1,3 +1,6 @@
 knowledge:
   - path: ../../../external/openAi/main.go
     kind: implementations
+  - path: ../main.go
+    kind: implementations
+    chain-make: true
