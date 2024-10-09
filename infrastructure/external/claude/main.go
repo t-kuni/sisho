@@ -106,8 +106,8 @@ func processStreamResponse(body io.ReadCloser) (claude.GenerationResult, error) 
 
 		if streamResp.Type == "content_block_delta" {
 			fullResponse.WriteString(streamResp.Delta.Text)
-		} else if streamResp.Type == "message_stop" {
-			terminationReason = streamResp.Message.StopReason
+		} else if streamResp.Type == "message_delta" && streamResp.Delta.StopReason != "" {
+			terminationReason = streamResp.Delta.StopReason
 		}
 	}
 
@@ -136,11 +136,11 @@ type StreamResponse struct {
 			Text string `json:"text"`
 			Type string `json:"type"`
 		} `json:"content"`
-		Role       string `json:"role"`
-		StopReason string `json:"stop_reason"`
+		Role string `json:"role"`
 	} `json:"message"`
 	Delta struct {
-		Type string `json:"type"`
-		Text string `json:"text"`
+		Type       string `json:"type"`
+		Text       string `json:"text"`
+		StopReason string `json:"stop_reason"`
 	}
 }
