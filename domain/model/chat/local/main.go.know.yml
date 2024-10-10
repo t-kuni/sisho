@@ -1,0 +1,6 @@
+knowledge:
+    - path: result.txt
+      kind: implementations
+    - path: ../main.go
+      kind: implementations
+      chain-make: true

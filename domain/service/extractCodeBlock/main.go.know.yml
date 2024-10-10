@@ -1,0 +1,3 @@
+knowledge:
+  - path: main_test.go
+    kind: implementations

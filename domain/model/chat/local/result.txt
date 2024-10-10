@@ -1,0 +1,219 @@
+以下に、要求された修正を加えた `cmd/fixTaskCommand/main.go` の全体のコードを Capturable Code Block 形式で示します。
+
+<!-- CODE_BLOCK_BEGIN -->```cmd/fixTaskCommand/main.go
+package fixTaskCommand
+
+import (
+	"fmt"
+	"github.com/rotisserie/eris"
+	"github.com/spf13/cobra"
+	"github.com/t-kuni/sisho/domain/model/chat"
+	"github.com/t-kuni/sisho/domain/model/prompts/extractPaths"
+	"github.com/t-kuni/sisho/domain/repository/config"
+	"github.com/t-kuni/sisho/domain/service/configFindService"
+	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
+	"github.com/t-kuni/sisho/domain/service/make"
+	"github.com/t-kuni/sisho/domain/system/ksuid"
+	"github.com/t-kuni/sisho/domain/system/timer"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+)
+
+type FixTaskCommand struct {
+	CobraCommand *cobra.Command
+}
+
+func NewFixTaskCommand(
+	configFindService *configFindService.ConfigFindService,
+	configRepository config.Repository,
+	makeService *make.MakeService,
+	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
+	chatClient chat.Chat,
+	ksuidGenerator ksuid.IKsuid,
+	timer timer.ITimer,
+) *FixTaskCommand {
+	var tryCount int
+
+	cmd := &cobra.Command{
+		Use:   "fix:task [taskName]",
+		Short: "Execute a task and fix errors using LLM",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			taskName := args[0]
+
+			// Find and read config file
+			configPath, err := configFindService.FindConfig()
+			if err != nil {
+				return eris.Wrap(err, "failed to find config file")
+			}
+
+			cfg, err := configRepository.Read(configPath)
+			if err != nil {
+				return eris.Wrap(err, "failed to read config file")
+			}
+
+			// Find the specified task
+			var task *config.Task
+			for _, t := range cfg.Tasks {
+				if t.Name == taskName {
+					task = &t
+					break
+				}
+			}
+			if task == nil {
+				return eris.Errorf("task not found: %s", taskName)
+			}
+
+			rootDir := configFindService.GetProjectRoot(configPath)
+
+			// Create history directory
+			historyDir, err := createHistoryDir(rootDir, ksuidGenerator, timer)
+			if err != nil {
+				return eris.Wrap(err, "failed to create history directory")
+			}
+
+			// Get folder structure
+			folderStructure, err := folderStructureMakeService.MakeTree(rootDir)
+			if err != nil {
+				return eris.Wrap(err, "failed to get folder structure")
+			}
+
+			for i := 0; i < tryCount; i++ {
+				fmt.Printf("Attempt %d of %d\n", i+1, tryCount)
+
+				// Execute the task
+				cmd := exec.Command("sh", "-c", task.Run)
+				cmd.Dir = rootDir
+				output, err := cmd.CombinedOutput()
+
+				if err == nil {
+					fmt.Println("Task completed successfully")
+					return nil
+				}
+
+				fmt.Printf("Task failed with error: %v\n", err)
+				fmt.Println("Output:")
+				fmt.Println(string(output))
+
+				// Extract paths to fix
+				prompt, err := extractPaths.BuildPrompt(extractPaths.PromptParam{
+					Commands:        task.Run,
+					CommandResult:   string(output),
+					FolderStructure: folderStructure,
+				})
+				if err != nil {
+					return eris.Wrap(err, "failed to build extract paths prompt")
+				}
+
+				// Save prompt history
+				err = savePromptHistory(historyDir, i+1, prompt)
+				if err != nil {
+					return eris.Wrap(err, "failed to save prompt history")
+				}
+
+				result, err := chatClient.Send(prompt, cfg.LLM.Model)
+				if err != nil {
+					return eris.Wrap(err, "failed to send message to LLM")
+				}
+
+				// Save answer history
+				err = saveAnswerHistory(historyDir, i+1, result.Content)
+				if err != nil {
+					return eris.Wrap(err, "failed to save answer history")
+				}
+
+				// Parse the LLM response using the Capturable Code Block regex
+				re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```extractPaths.ExtractPathsResult([^`]*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
+				matches := re.FindStringSubmatch(result.Content)
+
+				if len(matches) < 4 {
+					return eris.New("no valid code block found in the LLM response")
+				}
+
+				var extractResult extractPaths.ExtractPathsResult
+				err = extractPaths.ParseResult(matches[2], &extractResult)
+				if err != nil {
+					return eris.Wrap(err, "failed to parse LLM response")
+				}
+
+				paths := extractResult.Paths
+
+				if len(paths) == 0 {
+					fmt.Println("No paths to fix were identified. Stopping the process.")
+					return nil
+				}
+
+				fmt.Println("Paths to fix:")
+				for _, path := range paths {
+					fmt.Printf("- %s\n", path)
+				}
+
+				// Fix the identified paths
+				err = makeService.Make(paths, true, false, string(output))
+				if err != nil {
+					return eris.Wrap(err, "failed to fix paths")
+				}
+			}
+
+			return eris.New("max attempts reached, task still failing")
+		},
+	}
+
+	cmd.Flags().IntVarP(&tryCount, "try", "t", 1, "Number of attempts to fix the task")
+
+	return &FixTaskCommand{
+		CobraCommand: cmd,
+	}
+}
+
+func createHistoryDir(rootDir string, ksuidGenerator ksuid.IKsuid, timer timer.ITimer) (string, error) {
+	historyBaseDir := filepath.Join(rootDir, ".sisho", "fixTask")
+	err := os.MkdirAll(historyBaseDir, 0755)
+	if err != nil {
+		return "", eris.Wrap(err, "failed to create history base directory")
+	}
+
+	id := ksuidGenerator.New()
+	historyDir := filepath.Join(historyBaseDir, id)
+	err = os.Mkdir(historyDir, 0755)
+	if err != nil {
+		return "", eris.Wrap(err, "failed to create history directory")
+	}
+
+	timeFile := filepath.Join(historyDir, timer.Now().Format("2006-01-02T15:04:05"))
+	_, err = os.Create(timeFile)
+	if err != nil {
+		return "", eris.Wrap(err, "failed to create time file")
+	}
+
+	return historyDir, nil
+}
+
+func savePromptHistory(historyDir string, index int, prompt string) error {
+	filename := fmt.Sprintf("prompt_%02d.md", index)
+	err := os.WriteFile(filepath.Join(historyDir, filename), []byte(prompt), 0644)
+	if err != nil {
+		return eris.Wrap(err, "failed to write prompt to history")
+	}
+	return nil
+}
+
+func saveAnswerHistory(historyDir string, index int, answer string) error {
+	filename := fmt.Sprintf("answer_%02d.md", index)
+	err := os.WriteFile(filepath.Join(historyDir, filename), []byte(answer), 0644)
+	if err != nil {
+		return eris.Wrap(err, "failed to write answer to history")
+	}
+	return nil
+}
+```<!-- CODE_BLOCK_END -->
+
+このコードでは、SPEC.mdに記載されている「Capturable Code Blockの本文を切り出す正規表現」を参考にして、LLMの応答からExtractPathsResultを抽出するように修正しました。具体的には、以下の変更を行いました：
+
+1. `regexp` パッケージをインポートしました。
+2. LLMの応答を解析する部分で、Capturable Code Blockを検出する正規表現を使用しました。
+3. 正規表現にマッチした部分から、ExtractPathsResultの内容を抽出し、それを`extractPaths.ParseResult`関数に渡すようにしました。
+
+これにより、LLMの応答から適切にExtractPathsResultを抽出し、処理できるようになりました。

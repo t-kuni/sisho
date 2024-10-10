@@ -8,12 +8,14 @@ import (
 	"github.com/t-kuni/sisho/domain/external/openAi"
 	chat2 "github.com/t-kuni/sisho/domain/model/chat"
 	modelClaude "github.com/t-kuni/sisho/domain/model/chat/claude"
+	"github.com/t-kuni/sisho/domain/model/chat/local"
 	modelOpenAi "github.com/t-kuni/sisho/domain/model/chat/openAi"
 	"github.com/t-kuni/sisho/domain/model/prompts"
 	"github.com/t-kuni/sisho/domain/repository/config"
 	"github.com/t-kuni/sisho/domain/repository/depsGraph"
 	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
+	"github.com/t-kuni/sisho/domain/service/extractCodeBlock"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
 	"github.com/t-kuni/sisho/domain/service/knowledgeScan"
@@ -21,9 +23,7 @@ import (
 	"github.com/t-kuni/sisho/domain/system/timer"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
-	"strings"
 )
 
 type MakeService struct {
@@ -38,6 +38,7 @@ type MakeService struct {
 	timer                      timer.ITimer
 	ksuidGenerator             ksuid.IKsuid
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService
+	extractCodeBlockService    *extractCodeBlock.CodeBlockExtractService
 }
 
 func NewMakeService(
@@ -52,6 +53,7 @@ func NewMakeService(
 	timer timer.ITimer,
 	ksuidGenerator ksuid.IKsuid,
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
+	extractCodeBlockService *extractCodeBlock.CodeBlockExtractService,
 ) *MakeService {
 	return &MakeService{
 		claudeClient:               claudeClient,
@@ -65,6 +67,7 @@ func NewMakeService(
 		timer:                      timer,
 		ksuidGenerator:             ksuidGenerator,
 		folderStructureMakeService: folderStructureMakeService,
+		extractCodeBlockService:    extractCodeBlockService,
 	}
 }
 
@@ -128,6 +131,8 @@ func (s *MakeService) Make(paths []string, applyFlag, chainFlag bool, instructio
 			chat = modelOpenAi.NewOpenAiChat(s.openAiClient)
 		case "anthropic":
 			chat = modelClaude.NewClaudeChat(s.claudeClient)
+		case "local":
+			chat = local.NewLocalChat()
 		default:
 			return eris.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
 		}
@@ -315,16 +320,10 @@ func (s *MakeService) saveAnswerHistory(historyDir string, index int, answer str
 }
 
 func (s *MakeService) applyChanges(path, answer string) error {
-	// NOTE: この正規表現は絶対に変更しないでください
-	// gpt-4だとコードブロックの終了からコメントの間に1文字入ることがある
-	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(path) + "([^`]*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
-	matches := re.FindStringSubmatch(answer)
-
-	if len(matches) < 4 {
-		return eris.New("no code block found in the answer")
+	newContent, err := s.extractCodeBlockService.ExtractCodeBlock(answer, path)
+	if err != nil {
+		return eris.Wrapf(err, "failed to extract code block from answer")
 	}
-
-	newContent := strings.TrimSpace(matches[2])
 
 	oldContent, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {

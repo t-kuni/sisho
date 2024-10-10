@@ -9,6 +9,7 @@ import (
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
+	"github.com/t-kuni/sisho/domain/service/extractCodeBlock"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
 	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
@@ -54,6 +55,7 @@ func TestMakeCommand(t *testing.T) {
 		knowledgeLoadSvc := knowledgeLoad.NewKnowledgeLoadService(knowledgeRepo)
 		mockKsuidGenerator := ksuid.NewMockIKsuid(mockCtrl)
 		folderStructureMakeSvc := folderStructureMake.NewFolderStructureMakeService()
+		extractCodeBlockSvc := extractCodeBlock.NewCodeBlockExtractService()
 
 		customizeMocks(Mocks{
 			ClaudeClient:   mockClaudeClient,
@@ -75,6 +77,7 @@ func TestMakeCommand(t *testing.T) {
 			mockTimer,
 			mockKsuidGenerator,
 			folderStructureMakeSvc,
+			extractCodeBlockSvc,
 		)
 	}
 
@@ -123,137 +126,6 @@ dummy text
 		// Assert
 		space.AssertFile("aaa/bbb/ccc/ddd.txt", func(actual []byte) {
 			assert.Equal(t, "UPDATED_CONTENT", string(actual))
-		})
-	})
-
-	t.Run("コードブロックが複数生成されてしまった場合も正しくパースできること", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		space := testUtil.BeginTestSpace(t)
-		defer space.CleanUp()
-
-		// Setup Files
-		space.WriteFile("sisho.yml", []byte(`
-llm:
-    driver: anthropic
-    model: claude-3-5-sonnet-20240620
-`))
-		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
-
-		generated := `
-dummy text
-
-<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
-UPDATED_CONTENT
-` + "```" + `<!-- CODE_BLOCK_END -->
-
-<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/eee.txt
-UPDATED_CONTENT
-` + "```" + `<!-- CODE_BLOCK_END -->
-
-dummy text
-`
-
-		testee := factory(mockCtrl, func(mocks Mocks) {
-			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
-			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
-					assert.Contains(t, messages[0].Content, "aaa/bbb/ccc/ddd.txt")
-					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT")
-					return claude.GenerationResult{
-						Content:           generated,
-						TerminationReason: "success",
-					}, nil
-				})
-			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
-			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
-		})
-		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
-		assert.NoError(t, err)
-
-		// Assert
-		space.AssertFile("aaa/bbb/ccc/ddd.txt", func(actual []byte) {
-			assert.Equal(t, "UPDATED_CONTENT", string(actual))
-		})
-	})
-
-	t.Run("複数のファイルを指定して生成されたコードが反映されること", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		defer mockCtrl.Finish()
-
-		space := testUtil.BeginTestSpace(t)
-		defer space.CleanUp()
-
-		// Setup Files
-		space.WriteFile("sisho.yml", []byte(`
-llm:
-    driver: anthropic
-    model: claude-3-5-sonnet-20240620
-`))
-		space.WriteFile("aaa/bbb.txt", []byte("CURRENT_CONTENT1"))
-		space.WriteFile("aaa/bbb-side.txt", []byte("SIDE_CONTENT1"))
-		space.WriteFile("aaa/bbb.txt.know.yml", []byte(`
-knowledge:
-  - path: bbb-side.txt
-    kind: specifications
-`))
-		space.WriteFile("aaa/ccc.txt", []byte("CURRENT_CONTENT2"))
-		space.WriteFile("aaa/ccc-side.txt", []byte("SIDE_CONTENT1"))
-		space.WriteFile("aaa/ccc.txt.know.yml", []byte(`
-knowledge:
-  - path: ccc-side.txt
-    kind: specifications
-`))
-
-		generatedTmpl := `
-<!-- CODE_BLOCK_BEGIN -->` + "```" + `%s
-UPDATED_CONTENT%d
-` + "```" + `<!-- CODE_BLOCK_END -->
-`
-
-		testee := factory(mockCtrl, func(mocks Mocks) {
-			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
-			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
-					assert.Len(t, messages, 1)
-					assert.Contains(t, messages[0].Content, "aaa/bbb.txt")
-					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT1")
-					assert.Contains(t, messages[0].Content, "aaa/ccc.txt")
-					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT2")
-					assert.Contains(t, messages[0].Content, "aaa/bbb-side.txt")
-					assert.NotContains(t, messages[0].Content, "aaa/ccc-side.txt")
-					return claude.GenerationResult{
-						Content:           fmt.Sprintf(generatedTmpl, "aaa/bbb.txt", 1),
-						TerminationReason: "success",
-					}, nil
-				})
-			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
-					assert.Len(t, messages, 1)
-					assert.Contains(t, messages[0].Content, "aaa/bbb.txt")
-					assert.Contains(t, messages[0].Content, "UPDATED_CONTENT1")
-					assert.Contains(t, messages[0].Content, "aaa/ccc.txt")
-					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT2")
-					assert.NotContains(t, messages[0].Content, "aaa/bbb-side.txt")
-					assert.Contains(t, messages[0].Content, "aaa/ccc-side.txt")
-					return claude.GenerationResult{
-						Content:           fmt.Sprintf(generatedTmpl, "aaa/ccc.txt", 2),
-						TerminationReason: "success",
-					}, nil
-				})
-			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
-			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
-		})
-		err := testee.Make([]string{"aaa/bbb.txt", "aaa/ccc.txt"}, true, false, "")
-		assert.NoError(t, err)
-
-		// Assert
-		space.AssertFile("aaa/bbb.txt", func(actual []byte) {
-			assert.Equal(t, "UPDATED_CONTENT1", string(actual))
-		})
-		space.AssertFile("aaa/ccc.txt", func(actual []byte) {
-			assert.Equal(t, "UPDATED_CONTENT2", string(actual))
 		})
 	})
 

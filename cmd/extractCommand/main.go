@@ -15,12 +15,12 @@ import (
 	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
+	"github.com/t-kuni/sisho/domain/service/extractCodeBlock"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
 	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
-	"regexp"
 )
 
 type ExtractCommand struct {
@@ -36,6 +36,7 @@ func NewExtractCommand(
 	knowledgeRepository knowledge.Repository,
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
 	knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService,
+	extractCodeBlockService *extractCodeBlock.CodeBlockExtractService,
 ) *ExtractCommand {
 	cmd := &cobra.Command{
 		Use:   "extract [path]",
@@ -43,7 +44,8 @@ func NewExtractCommand(
 		Long:  `Extract knowledge list from the specified Target Code and generate or update a knowledge list file.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runExtract(args[0], claudeClient, openAiClient, configFindService, configRepository, fileRepository, knowledgeRepository, folderStructureMakeService, knowledgePathNormalizeService)
+			return runExtract(args[0], claudeClient, openAiClient, configFindService, configRepository, fileRepository,
+				knowledgeRepository, folderStructureMakeService, knowledgePathNormalizeService, extractCodeBlockService)
 		},
 	}
 
@@ -62,6 +64,7 @@ func runExtract(
 	knowledgeRepository knowledge.Repository,
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
 	knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService,
+	extractCodeBlockService *extractCodeBlock.CodeBlockExtractService,
 ) error {
 	configPath, err := configFindService.FindConfig()
 	if err != nil {
@@ -131,7 +134,7 @@ func runExtract(
 		return eris.Wrap(err, "failed to send message to LLM")
 	}
 
-	knowledgeList, err := extractKnowledgeList(answer.Content, relativeKnowledgeListPath, rootDir, knowledgePathNormalizeService)
+	knowledgeList, err := extractKnowledgeList(extractCodeBlockService, answer.Content, relativeKnowledgeListPath, rootDir, knowledgePathNormalizeService)
 	if err != nil {
 		return eris.Wrap(err, "failed to extract knowledge list")
 	}
@@ -156,18 +159,14 @@ func runExtract(
 	return nil
 }
 
-func extractKnowledgeList(answer string, knowledgeListPath string, rootDir string, knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService) ([]knowledge.Knowledge, error) {
-	re := regexp.MustCompile("(?s)(\n|^)<!-- CODE_BLOCK_BEGIN -->```" + regexp.QuoteMeta(knowledgeListPath) + "([^`]*)```.?<!-- CODE_BLOCK_END -->(\n|$)")
-	matches := re.FindStringSubmatch(answer)
-
-	if len(matches) < 3 {
-		return nil, eris.New("no knowledge list found in the answer")
+func extractKnowledgeList(extractCodeBlockService *extractCodeBlock.CodeBlockExtractService, answer string, knowledgeListPath string, rootDir string, knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService) ([]knowledge.Knowledge, error) {
+	yamlContent, err := extractCodeBlockService.ExtractCodeBlock(answer, knowledgeListPath)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to extract code block")
 	}
 
-	yamlContent := matches[2]
-
 	var knowledgeFile knowledge.KnowledgeFile
-	err := yaml.Unmarshal([]byte(yamlContent), &knowledgeFile)
+	err = yaml.Unmarshal([]byte(yamlContent), &knowledgeFile)
 	if err != nil {
 		return nil, eris.Wrap(err, "failed to unmarshal YAML content")
 	}

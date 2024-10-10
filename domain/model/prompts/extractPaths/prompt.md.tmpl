@@ -1,0 +1,43 @@
+以下のコマンド実行結果から、修正が必要なファイルのパスを抽出してください。
+
+# 実行したコマンド
+
+```sh
+{{ .Commands }}
+```
+
+# コマンド実行結果（標準ストリーム）
+
+```txt
+{{ .CommandResult }}
+```
+
+# Folder Structure
+
+```
+{{ .FolderStructure }}
+```
+
+# Capturable Code Block とは
+
+以下の書式に従うコードブロックを指します。
+
+* コードブロック開始の書式： \<!-- CODE_BLOCK_BEGIN -->```json
+* コードブロック終了の書式： ```\<!-- CODE_BLOCK_END -->
+
+# Answer Syntax
+
+```yaml
+type: array
+description: 修正が必要なパスのリスト（プロジェクトルートからの相対パス）
+items:
+  x-stoplight:
+    id: v421jsbv91ti7
+  type: string
+```
+
+# Answer
+
+* 説明は省略します。
+* コードブロックは Capturable Code Block に従って記載します。
+

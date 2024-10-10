@@ -1,0 +1,9 @@
+title: ExtractPathsResult
+x-stoplight:
+  id: vz9vjcjnow0v6
+type: array
+description: 修正が必要なパスのリスト（プロジェクトルートからの相対パス）
+items:
+  x-stoplight:
+    id: v421jsbv91ti7
+  type: string

@@ -11,6 +11,7 @@ import (
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
+	"github.com/t-kuni/sisho/domain/service/extractCodeBlock"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
 	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
@@ -57,6 +58,7 @@ func NewRootCommand() *RootCommand {
 	knowledgeLoadSvc := knowledgeLoad.NewKnowledgeLoadService(knowledgeRepo)
 	projectScanSvc := projectScan.NewProjectScanService(fileRepo)
 	folderStructureMakeSvc := folderStructureMake.NewFolderStructureMakeService()
+	extractCodeBlockSvc := extractCodeBlock.NewCodeBlockExtractService()
 
 	claudeClient := claude.NewClaudeClient()
 	openAiClient := openAi.NewOpenAIClient()
@@ -75,6 +77,7 @@ func NewRootCommand() *RootCommand {
 		timer.NewTimer(),
 		ksuidGenerator,
 		folderStructureMakeSvc,
+		extractCodeBlockSvc,
 	)
 	makeCmd := makeCommand.NewMakeCommand(makeService)
 	extractCmd := extractCommand.NewExtractCommand(
@@ -86,6 +89,7 @@ func NewRootCommand() *RootCommand {
 		knowledgeRepo,
 		folderStructureMakeSvc,
 		knowledgePathNormalizeSvc,
+		extractCodeBlockSvc,
 	)
 	depsGraphCmd := depsGraphCommand.NewDepsGraphCommand(
 		configFindSvc,

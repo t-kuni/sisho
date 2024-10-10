@@ -10,6 +10,7 @@ import (
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
+	"github.com/t-kuni/sisho/domain/service/extractCodeBlock"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
 	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
@@ -54,6 +55,7 @@ func TestMakeCommand(t *testing.T) {
 		knowledgeLoadSvc := knowledgeLoad.NewKnowledgeLoadService(knowledgeRepo)
 		mockKsuidGenerator := ksuid.NewMockIKsuid(mockCtrl)
 		folderStructureMakeSvc := folderStructureMake.NewFolderStructureMakeService()
+		extractCodeBlockSvc := extractCodeBlock.NewCodeBlockExtractService()
 
 		customizeMocks(Mocks{
 			ClaudeClient:   mockClaudeClient,
@@ -75,6 +77,7 @@ func TestMakeCommand(t *testing.T) {
 			mockTimer,
 			mockKsuidGenerator,
 			folderStructureMakeSvc,
+			extractCodeBlockSvc,
 		)
 		makeCmd := NewMakeCommand(makeSvc)
 

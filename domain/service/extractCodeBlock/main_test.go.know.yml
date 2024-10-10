@@ -1,0 +1,5 @@
+knowledge:
+  - path: main.go
+    kind: implementations
+  - path: main.go.md
+    kind: implementations
