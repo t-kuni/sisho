@@ -9,6 +9,7 @@ import (
 	"github.com/t-kuni/sisho/cmd/makeCommand"
 	"github.com/t-kuni/sisho/cmd/qCommand"
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
+	"github.com/t-kuni/sisho/domain/service/chatFactory"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"github.com/t-kuni/sisho/domain/service/extractCodeBlock"
@@ -62,15 +63,13 @@ func NewRootCommand() *RootCommand {
 
 	claudeClient := claude.NewClaudeClient()
 	openAiClient := openAi.NewOpenAIClient()
+	chatFactory := chatFactory.NewChatFactory(openAiClient, claudeClient)
 
 	initCmd := initCommand.NewInitCommand(configRepo, fileRepo)
 	addCmd := addCommand.NewAddCommand(knowledgeRepo)
 	makeService := make.NewMakeService(
-		claudeClient,
-		openAiClient,
 		configFindSvc,
 		configRepo,
-		fileRepo,
 		knowledgeScanSvc,
 		knowledgeLoadSvc,
 		depsGraphRepo,
@@ -78,6 +77,7 @@ func NewRootCommand() *RootCommand {
 		ksuidGenerator,
 		folderStructureMakeSvc,
 		extractCodeBlockSvc,
+		chatFactory,
 	)
 	makeCmd := makeCommand.NewMakeCommand(makeService)
 	extractCmd := extractCommand.NewExtractCommand(

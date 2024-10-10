@@ -23,3 +23,6 @@ knowledge:
       kind: implementations
     - path: '@/domain/system/timer/main.go'
       kind: implementations
+    - path: '@/domain/service/chatFactory/main.go'
+      kind: implementations
+      chain-make: true

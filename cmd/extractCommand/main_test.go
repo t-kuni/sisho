@@ -6,6 +6,7 @@ import (
 	"github.com/t-kuni/sisho/domain/external/claude"
 	"github.com/t-kuni/sisho/domain/external/openAi"
 	"github.com/t-kuni/sisho/domain/repository/file"
+	"github.com/t-kuni/sisho/domain/service/chatFactory"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/extractCodeBlock"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
@@ -38,6 +39,7 @@ func TestExtractCommand(t *testing.T) {
 		folderStructureMakeSvc := folderStructureMake.NewFolderStructureMakeService()
 		knowledgePathNormalizeService := knowledgePathNormalize.NewKnowledgePathNormalizeService()
 		extractCodeBlockService := extractCodeBlock.NewCodeBlockExtractService()
+		chatFactoryService := chatFactory.NewChatFactory(mockOpenAiClient, mockClaudeClient)
 
 		customizeMocks(Mocks{
 			ClaudeClient:   mockClaudeClient,
@@ -46,15 +48,13 @@ func TestExtractCommand(t *testing.T) {
 		})
 
 		extractCmd := NewExtractCommand(
-			mockClaudeClient,
-			mockOpenAiClient,
 			configFindSvc,
 			configRepo,
-			mockFileRepo,
 			knowledgeRepo,
 			folderStructureMakeSvc,
 			knowledgePathNormalizeService,
 			extractCodeBlockService,
+			chatFactoryService,
 		)
 
 		rootCmd := &cobra.Command{}

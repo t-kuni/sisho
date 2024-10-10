@@ -12,13 +12,8 @@ import (
 
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
-	"github.com/t-kuni/sisho/domain/external/claude"
-	"github.com/t-kuni/sisho/domain/external/openAi"
-	"github.com/t-kuni/sisho/domain/model/chat"
-	modelClaude "github.com/t-kuni/sisho/domain/model/chat/claude"
-	modelOpenAi "github.com/t-kuni/sisho/domain/model/chat/openAi"
 	"github.com/t-kuni/sisho/domain/repository/config"
-	"github.com/t-kuni/sisho/domain/repository/file"
+	"github.com/t-kuni/sisho/domain/service/chatFactory"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
 	"github.com/t-kuni/sisho/domain/service/knowledgeLoad"
@@ -32,16 +27,14 @@ type QCommand struct {
 }
 
 func NewQCommand(
-	claudeClient claude.Client,
-	openAiClient openAi.Client,
 	configFindService *configFindService.ConfigFindService,
 	configRepository config.Repository,
-	fileRepository file.Repository,
 	knowledgeScanService *knowledgeScan.KnowledgeScanService,
 	knowledgeLoadService *knowledgeLoad.KnowledgeLoadService,
 	timer timer.ITimer,
 	ksuidGenerator ksuid.IKsuid,
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
+	chatFactoryService *chatFactory.ChatFactory,
 ) *QCommand {
 	var promptFlag bool
 	var inputFlag bool
@@ -51,8 +44,9 @@ func NewQCommand(
 		Short: "Ask questions about specified files using LLM",
 		Long:  `Ask questions about specified files using LLM based on the knowledge sets.`,
 		Args:  cobra.MinimumNArgs(1),
-		RunE: runQ(&promptFlag, &inputFlag, claudeClient, openAiClient, configFindService, configRepository,
-			fileRepository, knowledgeScanService, knowledgeLoadService, timer, ksuidGenerator, folderStructureMakeService),
+		RunE: runQ(&promptFlag, &inputFlag, configFindService, configRepository,
+			knowledgeScanService, knowledgeLoadService, timer, ksuidGenerator,
+			folderStructureMakeService, chatFactoryService),
 	}
 
 	cmd.Flags().BoolVarP(&promptFlag, "prompt", "p", false, "Open editor for additional instructions")
@@ -66,16 +60,14 @@ func NewQCommand(
 func runQ(
 	promptFlag *bool,
 	inputFlag *bool,
-	claudeClient claude.Client,
-	openAiClient openAi.Client,
 	configFindService *configFindService.ConfigFindService,
 	configRepository config.Repository,
-	fileRepository file.Repository,
 	knowledgeScanService *knowledgeScan.KnowledgeScanService,
 	knowledgeLoadService *knowledgeLoad.KnowledgeLoadService,
 	timer timer.ITimer,
 	ksuidGenerator ksuid.IKsuid,
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
+	chatFactoryService *chatFactory.ChatFactory,
 ) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		configPath, err := configFindService.FindConfig()
@@ -130,17 +122,12 @@ func runQ(
 			}
 		}
 
-		var chat chat.Chat
-		switch cfg.LLM.Driver {
-		case "open-ai":
-			chat = modelOpenAi.NewOpenAiChat(openAiClient)
-		case "anthropic":
-			chat = modelClaude.NewClaudeChat(claudeClient)
-		default:
-			return eris.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
+		chat, err := chatFactoryService.Make(cfg)
+		if err != nil {
+			return eris.Wrap(err, "failed to create chat instance")
 		}
 
-		targets, err := readAllTargets(args, fileRepository)
+		targets, err := readAllTargets(args)
 		if err != nil {
 			return eris.Wrap(err, "failed to read all targets")
 		}
@@ -236,10 +223,10 @@ func printKnowledgePaths(knowledgeSets []prompts.KnowledgeSet) {
 	fmt.Println()
 }
 
-func readAllTargets(paths []string, fileRepository file.Repository) ([]prompts.Target, error) {
+func readAllTargets(paths []string) ([]prompts.Target, error) {
 	targets := make([]prompts.Target, len(paths))
 	for i, path := range paths {
-		target, err := readTarget(path, fileRepository)
+		target, err := readTarget(path)
 		if err != nil {
 			return nil, eris.Wrapf(err, "failed to read target: %s", path)
 		}
@@ -248,7 +235,7 @@ func readAllTargets(paths []string, fileRepository file.Repository) ([]prompts.T
 	return targets, nil
 }
 
-func readTarget(path string, fileRepository file.Repository) (prompts.Target, error) {
+func readTarget(path string) (prompts.Target, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) {

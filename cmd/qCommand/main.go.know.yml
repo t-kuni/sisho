@@ -41,3 +41,6 @@ knowledge:
     - path: ../../domain/service/folderStructureMake/main.go
       kind: implementations
       chain-make: true
+    - path: '@/domain/service/chatFactory/main.go'
+      kind: implementations
+      chain-make: true

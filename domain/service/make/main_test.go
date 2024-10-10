@@ -7,6 +7,7 @@ import (
 	"github.com/t-kuni/sisho/domain/external/openAi"
 	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
+	"github.com/t-kuni/sisho/domain/service/chatFactory"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"github.com/t-kuni/sisho/domain/service/extractCodeBlock"
@@ -56,6 +57,7 @@ func TestMakeCommand(t *testing.T) {
 		mockKsuidGenerator := ksuid.NewMockIKsuid(mockCtrl)
 		folderStructureMakeSvc := folderStructureMake.NewFolderStructureMakeService()
 		extractCodeBlockSvc := extractCodeBlock.NewCodeBlockExtractService()
+		chatFactory := chatFactory.NewChatFactory(mockOpenAiClient, mockClaudeClient)
 
 		customizeMocks(Mocks{
 			ClaudeClient:   mockClaudeClient,
@@ -66,11 +68,8 @@ func TestMakeCommand(t *testing.T) {
 		})
 
 		return makeService.NewMakeService(
-			mockClaudeClient,
-			mockOpenAiClient,
 			configFindSvc,
 			configRepo,
-			mockFileRepo,
 			knowledgeScanSvc,
 			knowledgeLoadSvc,
 			depsGraphRepo,
@@ -78,6 +77,7 @@ func TestMakeCommand(t *testing.T) {
 			mockKsuidGenerator,
 			folderStructureMakeSvc,
 			extractCodeBlockSvc,
+			chatFactory,
 		)
 	}
 

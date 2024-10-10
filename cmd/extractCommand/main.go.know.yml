@@ -15,3 +15,6 @@ knowledge:
   - path: ../../domain/service/knowledgePathNormalize/main.go
     kind: implementations
     chain-make: true
+  - path: '@/domain/service/chatFactory/main.go'
+    kind: implementations
+    chain-make: true

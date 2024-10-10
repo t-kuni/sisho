@@ -8,6 +8,7 @@ import (
 	"github.com/t-kuni/sisho/domain/external/openAi"
 	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
+	"github.com/t-kuni/sisho/domain/service/chatFactory"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/contextScan"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
@@ -51,6 +52,7 @@ func TestQCommand(t *testing.T) {
 		knowledgeLoadSvc := knowledgeLoad.NewKnowledgeLoadService(knowledgeRepo)
 		mockKsuidGenerator := ksuid.NewMockIKsuid(mockCtrl)
 		folderStructureMakeSvc := folderStructureMake.NewFolderStructureMakeService()
+		chatFactorySvc := chatFactory.NewChatFactory(mockOpenAiClient, mockClaudeClient)
 
 		customizeMocks(Mocks{
 			ClaudeClient:   mockClaudeClient,
@@ -61,16 +63,14 @@ func TestQCommand(t *testing.T) {
 		})
 
 		testee := qCommand.NewQCommand(
-			mockClaudeClient,
-			mockOpenAiClient,
 			configFindSvc,
 			configRepo,
-			mockFileRepo,
 			knowledgeScanSvc,
 			knowledgeLoadSvc,
 			mockTimer,
 			mockKsuidGenerator,
 			folderStructureMakeSvc,
+			chatFactorySvc,
 		)
 
 		rootCmd := &cobra.Command{}

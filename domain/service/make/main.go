@@ -4,16 +4,10 @@ import (
 	"fmt"
 	"github.com/rotisserie/eris"
 	"github.com/sergi/go-diff/diffmatchpatch"
-	"github.com/t-kuni/sisho/domain/external/claude"
-	"github.com/t-kuni/sisho/domain/external/openAi"
-	chat2 "github.com/t-kuni/sisho/domain/model/chat"
-	modelClaude "github.com/t-kuni/sisho/domain/model/chat/claude"
-	"github.com/t-kuni/sisho/domain/model/chat/local"
-	modelOpenAi "github.com/t-kuni/sisho/domain/model/chat/openAi"
 	"github.com/t-kuni/sisho/domain/model/prompts"
 	"github.com/t-kuni/sisho/domain/repository/config"
 	"github.com/t-kuni/sisho/domain/repository/depsGraph"
-	"github.com/t-kuni/sisho/domain/repository/file"
+	"github.com/t-kuni/sisho/domain/service/chatFactory"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/extractCodeBlock"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
@@ -27,11 +21,8 @@ import (
 )
 
 type MakeService struct {
-	claudeClient               claude.Client
-	openAiClient               openAi.Client
 	configFindService          *configFindService.ConfigFindService
 	configRepository           config.Repository
-	fileRepository             file.Repository
 	knowledgeScanService       *knowledgeScan.KnowledgeScanService
 	knowledgeLoadService       *knowledgeLoad.KnowledgeLoadService
 	depsGraphRepo              depsGraph.Repository
@@ -39,14 +30,12 @@ type MakeService struct {
 	ksuidGenerator             ksuid.IKsuid
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService
 	extractCodeBlockService    *extractCodeBlock.CodeBlockExtractService
+	chatFactory                *chatFactory.ChatFactory
 }
 
 func NewMakeService(
-	claudeClient claude.Client,
-	openAiClient openAi.Client,
 	configFindService *configFindService.ConfigFindService,
 	configRepository config.Repository,
-	fileRepository file.Repository,
 	knowledgeScanService *knowledgeScan.KnowledgeScanService,
 	knowledgeLoadService *knowledgeLoad.KnowledgeLoadService,
 	depsGraphRepo depsGraph.Repository,
@@ -54,13 +43,11 @@ func NewMakeService(
 	ksuidGenerator ksuid.IKsuid,
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
 	extractCodeBlockService *extractCodeBlock.CodeBlockExtractService,
+	chatFactory *chatFactory.ChatFactory,
 ) *MakeService {
 	return &MakeService{
-		claudeClient:               claudeClient,
-		openAiClient:               openAiClient,
 		configFindService:          configFindService,
 		configRepository:           configRepository,
-		fileRepository:             fileRepository,
 		knowledgeScanService:       knowledgeScanService,
 		knowledgeLoadService:       knowledgeLoadService,
 		depsGraphRepo:              depsGraphRepo,
@@ -68,6 +55,7 @@ func NewMakeService(
 		ksuidGenerator:             ksuidGenerator,
 		folderStructureMakeService: folderStructureMakeService,
 		extractCodeBlockService:    extractCodeBlockService,
+		chatFactory:                chatFactory,
 	}
 }
 
@@ -125,16 +113,9 @@ func (s *MakeService) Make(paths []string, applyFlag, chainFlag bool, instructio
 		fmt.Printf("\n--- Processing target: %s ---\n", path)
 
 		// チャットモデルの選択
-		var chat chat2.Chat
-		switch cfg.LLM.Driver {
-		case "open-ai":
-			chat = modelOpenAi.NewOpenAiChat(s.openAiClient)
-		case "anthropic":
-			chat = modelClaude.NewClaudeChat(s.claudeClient)
-		case "local":
-			chat = local.NewLocalChat()
-		default:
-			return eris.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
+		chat, err := s.chatFactory.Make(cfg)
+		if err != nil {
+			return eris.Wrap(err, "failed to create chat model")
 		}
 
 		// Target Codeの読み込み

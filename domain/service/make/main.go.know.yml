@@ -47,5 +47,8 @@ knowledge:
     - path: '@/domain/system/timer/main.go'
       kind: implementations
       chain-make: true
+    - path: '@/domain/service/chatFactory/main.go'
+      kind: implementations
+      chain-make: true
     - path: '@/domain/model/prompts/prompt.md.tmpl'
       kind: specifications

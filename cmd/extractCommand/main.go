@@ -4,16 +4,11 @@ import (
 	"fmt"
 	"github.com/rotisserie/eris"
 	"github.com/spf13/cobra"
-	"github.com/t-kuni/sisho/domain/external/claude"
-	"github.com/t-kuni/sisho/domain/external/openAi"
-	"github.com/t-kuni/sisho/domain/model/chat"
-	modelClaude "github.com/t-kuni/sisho/domain/model/chat/claude"
-	modelOpenAi "github.com/t-kuni/sisho/domain/model/chat/openAi"
 	"github.com/t-kuni/sisho/domain/model/prompts"
 	"github.com/t-kuni/sisho/domain/model/prompts/extract"
 	"github.com/t-kuni/sisho/domain/repository/config"
-	"github.com/t-kuni/sisho/domain/repository/file"
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
+	"github.com/t-kuni/sisho/domain/service/chatFactory"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/extractCodeBlock"
 	"github.com/t-kuni/sisho/domain/service/folderStructureMake"
@@ -28,15 +23,13 @@ type ExtractCommand struct {
 }
 
 func NewExtractCommand(
-	claudeClient claude.Client,
-	openAiClient openAi.Client,
 	configFindService *configFindService.ConfigFindService,
 	configRepository config.Repository,
-	fileRepository file.Repository,
 	knowledgeRepository knowledge.Repository,
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
 	knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService,
 	extractCodeBlockService *extractCodeBlock.CodeBlockExtractService,
+	chatFactory *chatFactory.ChatFactory,
 ) *ExtractCommand {
 	cmd := &cobra.Command{
 		Use:   "extract [path]",
@@ -44,8 +37,8 @@ func NewExtractCommand(
 		Long:  `Extract knowledge list from the specified Target Code and generate or update a knowledge list file.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runExtract(args[0], claudeClient, openAiClient, configFindService, configRepository, fileRepository,
-				knowledgeRepository, folderStructureMakeService, knowledgePathNormalizeService, extractCodeBlockService)
+			return runExtract(args[0], configFindService, configRepository, knowledgeRepository,
+				folderStructureMakeService, knowledgePathNormalizeService, extractCodeBlockService, chatFactory)
 		},
 	}
 
@@ -56,15 +49,13 @@ func NewExtractCommand(
 
 func runExtract(
 	path string,
-	claudeClient claude.Client,
-	openAiClient openAi.Client,
 	configFindService *configFindService.ConfigFindService,
 	configRepository config.Repository,
-	fileRepository file.Repository,
 	knowledgeRepository knowledge.Repository,
 	folderStructureMakeService *folderStructureMake.FolderStructureMakeService,
 	knowledgePathNormalizeService *knowledgePathNormalize.KnowledgePathNormalizeService,
 	extractCodeBlockService *extractCodeBlock.CodeBlockExtractService,
+	chatFactory *chatFactory.ChatFactory,
 ) error {
 	configPath, err := configFindService.FindConfig()
 	if err != nil {
@@ -119,14 +110,9 @@ func runExtract(
 		return eris.Wrap(err, "failed to build prompt")
 	}
 
-	var chatClient chat.Chat
-	switch cfg.LLM.Driver {
-	case "open-ai":
-		chatClient = modelOpenAi.NewOpenAiChat(openAiClient)
-	case "anthropic":
-		chatClient = modelClaude.NewClaudeChat(claudeClient)
-	default:
-		return eris.Errorf("unsupported LLM driver: %s", cfg.LLM.Driver)
+	chatClient, err := chatFactory.Make(cfg)
+	if err != nil {
+		return eris.Wrap(err, "failed to create chat client")
 	}
 
 	answer, err := chatClient.Send(prompt, cfg.LLM.Model)
