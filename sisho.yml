@@ -10,3 +10,8 @@ auto-collect:
     "[TARGET_CODE].md": true
 additional-knowledge:
     folder-structure: true
+tasks:
+    - name: build
+      run: go build
+    - name: test
+      run: go test ./...

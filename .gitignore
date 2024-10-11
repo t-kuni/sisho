@@ -2,3 +2,4 @@
 .env
 /.sisho
 *_mock.go
+/sisho
