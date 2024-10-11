@@ -31,6 +31,11 @@ auto-collect:
   "[TARGET_CODE].md": true
 additional-knowledge:
   folder-structure: true
+tasks:
+  - name: build
+    run: |
+      cd src
+      npm run build
 ```
 
 ## llmについて
@@ -59,6 +64,18 @@ additional-knowledge:
 
 * bool型
 * trueの場合、makeコマンド実行時、プロジェクトルート配下のフォルダ構造情報をプロンプトに追加する
+
+## tasksについて
+
+* タスクを定義します
+* 主にビルドやテストコードの実行を定義します
+* 用途
+  * fix:task サブコマンドで使用します
+* フィールドについて
+  * name
+    * タスク名
+  * run
+    * タスクの実行コマンド
 
 # プロジェクトルートとは
 

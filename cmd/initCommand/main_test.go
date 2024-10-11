@@ -47,6 +47,7 @@ auto-collect:
     "[TARGET_CODE].md": true
 additional-knowledge:
     folder-structure: true
+tasks: []
 `
 			assert.YAMLEq(t, expect, string(actual))
 		})

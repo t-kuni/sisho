@@ -5,6 +5,7 @@ import (
 	"github.com/t-kuni/sisho/cmd/addCommand"
 	"github.com/t-kuni/sisho/cmd/depsGraphCommand"
 	"github.com/t-kuni/sisho/cmd/extractCommand"
+	"github.com/t-kuni/sisho/cmd/fixTaskCommand"
 	"github.com/t-kuni/sisho/cmd/initCommand"
 	"github.com/t-kuni/sisho/cmd/makeCommand"
 	"github.com/t-kuni/sisho/cmd/qCommand"
@@ -81,15 +82,13 @@ func NewRootCommand() *RootCommand {
 	)
 	makeCmd := makeCommand.NewMakeCommand(makeService)
 	extractCmd := extractCommand.NewExtractCommand(
-		claudeClient,
-		openAiClient,
 		configFindSvc,
 		configRepo,
-		fileRepo,
 		knowledgeRepo,
 		folderStructureMakeSvc,
 		knowledgePathNormalizeSvc,
 		extractCodeBlockSvc,
+		chatFactory,
 	)
 	depsGraphCmd := depsGraphCommand.NewDepsGraphCommand(
 		configFindSvc,
@@ -99,16 +98,24 @@ func NewRootCommand() *RootCommand {
 		knowledgePathNormalizeSvc,
 	)
 	qCmd := qCommand.NewQCommand(
-		claudeClient,
-		openAiClient,
 		configFindSvc,
 		configRepo,
-		fileRepo,
 		knowledgeScanSvc,
 		knowledgeLoadSvc,
 		timer.NewTimer(),
 		ksuidGenerator,
 		folderStructureMakeSvc,
+		chatFactory,
+	)
+	fixTaskCmd := fixTaskCommand.NewFixTaskCommand(
+		configFindSvc,
+		configRepo,
+		makeService,
+		chatFactory,
+		timer.NewTimer(),
+		ksuidGenerator,
+		folderStructureMakeSvc,
+		extractCodeBlockSvc,
 	)
 
 	cmd.AddCommand(initCmd.CobraCommand)
@@ -117,6 +124,7 @@ func NewRootCommand() *RootCommand {
 	cmd.AddCommand(extractCmd.CobraCommand)
 	cmd.AddCommand(depsGraphCmd.CobraCommand)
 	cmd.AddCommand(qCmd.CobraCommand)
+	cmd.AddCommand(fixTaskCmd.CobraCommand)
 
 	return &RootCommand{
 		CobraCommand: cmd,

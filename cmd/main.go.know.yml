@@ -51,3 +51,9 @@ knowledge:
       kind: implementations
     - path: ../domain/service/knowledgePathNormalize/main.go
       kind: implementations
+    - path: '@/domain/service/chatFactory/main.go'
+      kind: implementations
+    - path: '@/domain/service/extractCodeBlock/main.go'
+      kind: implementations
+    - path: '@/cmd/fixTaskCommand/main.go'
+      kind: implementations

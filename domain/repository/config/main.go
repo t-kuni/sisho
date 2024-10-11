@@ -5,6 +5,7 @@ type Config struct {
 	LLM                 LLM                 `yaml:"llm"`
 	AutoCollect         AutoCollect         `yaml:"auto-collect"`
 	AdditionalKnowledge AdditionalKnowledge `yaml:"additional-knowledge"`
+	Tasks               []Task              `yaml:"tasks"`
 }
 
 type LLM struct {
@@ -19,6 +20,11 @@ type AutoCollect struct {
 
 type AdditionalKnowledge struct {
 	FolderStructure bool `yaml:"folder-structure"`
+}
+
+type Task struct {
+	Name string `yaml:"name"`
+	Run  string `yaml:"run"`
 }
 
 type Repository interface {

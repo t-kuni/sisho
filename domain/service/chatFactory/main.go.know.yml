@@ -1,0 +1,22 @@
+knowledge:
+    - path: '@/domain/model/chat/main.go'
+      kind: implementations
+      chain-make: true
+    - path: '@/domain/model/chat/openAi/main.go'
+      kind: implementations
+      chain-make: true
+    - path: '@/domain/model/chat/claude/main.go'
+      kind: implementations
+      chain-make: true
+    - path: '@/domain/model/chat/local/main.go'
+      kind: implementations
+      chain-make: true
+    - path: '@/domain/external/openAi/main.go'
+      kind: implementations
+      chain-make: true
+    - path: '@/domain/external/claude/main.go'
+      kind: implementations
+      chain-make: true
+    - path: '@/domain/repository/config/main.go'
+      kind: implementations
+      chain-make: true
