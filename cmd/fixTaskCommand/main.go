@@ -36,6 +36,7 @@ func NewFixTaskCommand(
 	extractCodeBlockService *extractCodeBlock.CodeBlockExtractService,
 ) *FixTaskCommand {
 	var tryCount int
+	var dryRun bool
 
 	cmd := &cobra.Command{
 		Use:   "fix:task [taskName]",
@@ -90,7 +91,7 @@ func NewFixTaskCommand(
 					fmt.Printf("- %s\n", path)
 				}
 
-				err = makeService.Make(paths, true, false, errorMessage)
+				err = makeService.Make(paths, true, false, errorMessage, dryRun)
 				if err != nil {
 					return eris.Wrap(err, "failed to fix files")
 				}
@@ -109,6 +110,7 @@ func NewFixTaskCommand(
 	}
 
 	cmd.Flags().IntVarP(&tryCount, "try", "t", 1, "Number of attempts to fix the task")
+	cmd.Flags().BoolVarP(&dryRun, "dry-run", "d", false, "Perform a dry run without applying changes")
 
 	return &FixTaskCommand{
 		CobraCommand: cmd,

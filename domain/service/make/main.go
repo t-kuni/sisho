@@ -59,7 +59,7 @@ func NewMakeService(
 	}
 }
 
-func (s *MakeService) Make(paths []string, applyFlag, chainFlag bool, instructions string) error {
+func (s *MakeService) Make(paths []string, applyFlag, chainFlag bool, instructions string, dryRun bool) error {
 	// 設定ファイルの読み込み
 	configPath, err := s.configFindService.FindConfig()
 	if err != nil {
@@ -152,6 +152,11 @@ func (s *MakeService) Make(paths []string, applyFlag, chainFlag bool, instructio
 		err = s.savePromptHistory(historyDir, i+1, prompt)
 		if err != nil {
 			return eris.Wrap(err, "failed to save prompt history")
+		}
+
+		if dryRun {
+			fmt.Println("Dry run: Skipping LLM file generation")
+			continue
 		}
 
 		result, err := chat.Send(prompt, cfg.LLM.Model)

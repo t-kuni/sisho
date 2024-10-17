@@ -120,12 +120,41 @@ dummy text
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 		})
-		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
+		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", false)
 		assert.NoError(t, err)
 
 		// Assert
 		space.AssertFile("aaa/bbb/ccc/ddd.txt", func(actual []byte) {
 			assert.Equal(t, "UPDATED_CONTENT", string(actual))
+		})
+	})
+
+	t.Run("dryRunフラグがtrueの場合LLMによるファイル生成が行われないこと", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		space := testUtil.BeginTestSpace(t)
+		defer space.CleanUp()
+
+		// Setup Files
+		space.WriteFile("sisho.yml", []byte(`
+llm:
+    driver: anthropic
+    model: claude-3-5-sonnet-20240620
+`))
+		space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+
+		testee := factory(mockCtrl, func(mocks Mocks) {
+			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+		})
+		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", true)
+		assert.NoError(t, err)
+
+		// Assert
+		space.AssertFile("aaa/bbb/ccc/ddd.txt", func(actual []byte) {
+			assert.Equal(t, "CURRENT_CONTENT", string(actual))
 		})
 	})
 
@@ -175,7 +204,7 @@ UPDATED_CONTENT
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 		})
-		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt", "aaa/bbb/ccc/eee.txt"}, true, false, "")
+		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt", "aaa/bbb/ccc/eee.txt"}, true, false, "", false)
 		assert.NoError(t, err)
 
 		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "2022-01-01T00:00:00"))
@@ -238,7 +267,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
-			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", false)
 			assert.NoError(t, err)
 		})
 
@@ -285,7 +314,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
-			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", false)
 			assert.NoError(t, err)
 		})
 
@@ -332,7 +361,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
-			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", false)
 			assert.NoError(t, err)
 		})
 	})
@@ -380,7 +409,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
-			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", false)
 			assert.NoError(t, err)
 		})
 
@@ -426,7 +455,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
-			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", false)
 			assert.NoError(t, err)
 		})
 
@@ -472,7 +501,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
-			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", false)
 			assert.NoError(t, err)
 		})
 	})
@@ -530,7 +559,7 @@ UPDATED_CONTENT
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 		})
-		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
+		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", false)
 		assert.NoError(t, err)
 	})
 
@@ -576,7 +605,7 @@ UPDATED_CONTENT
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 		})
-		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
+		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", false)
 		assert.NoError(t, err)
 	})
 
@@ -622,7 +651,7 @@ UPDATED_CONTENT
 			mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 		})
-		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "")
+		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", false)
 		assert.NoError(t, err)
 	})
 
@@ -691,7 +720,7 @@ UPDATED_CONTENT%d
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
-			err := testee.Make([]string{"file3.go"}, true, true, "")
+			err := testee.Make([]string{"file3.go"}, true, true, "", false)
 			assert.NoError(t, err)
 
 			// Assert
@@ -730,7 +759,7 @@ additional-knowledge:
 			testee := factory(mockCtrl, func(mocks Mocks) {
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 			})
-			err := testee.Make([]string{"file1..go"}, false, true, "")
+			err := testee.Make([]string{"file1..go"}, false, true, "", false)
 
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), "failed to read deps-graph.json")
@@ -782,7 +811,7 @@ UPDATED_CONTENT%d
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
-			err := testee.Make([]string{"file3.go"}, true, true, "")
+			err := testee.Make([]string{"file3.go"}, true, true, "", false)
 			assert.NoError(t, err)
 
 			// Assert
@@ -841,7 +870,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
-			err := testee.Make([]string{"file1.go"}, true, false, "")
+			err := testee.Make([]string{"file1.go"}, true, false, "", false)
 			assert.NoError(t, err)
 		})
 
@@ -896,7 +925,7 @@ UPDATED_CONTENT
 				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
 				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
 			})
-			err := testee.Make([]string{"file1.go"}, true, false, "")
+			err := testee.Make([]string{"file1.go"}, true, false, "", false)
 			assert.NoError(t, err)
 		})
 	})

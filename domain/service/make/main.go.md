@@ -34,6 +34,9 @@ LLMを使ってpathsで指定したファイルを生成する
     * instructions
         * 入力したテキストはprompt.md.tmplのInstructionsとして渡される
         * 入力したテキストは標準出力にも出力される
+    * dryRun
+        * LLMを用いたファイル生成をスキップします。
+        * applyFlagは無視されます。
 
 * 生成ループとは
     * 複数のTarget Codeが指定された場合、それぞれのTarget Codeに対して以下の処理を行うこと

@@ -26,3 +26,5 @@ command make [path1], [path2]...
     * iオプションと併用されている場合はエラーとする
   * `-a`, `--apply` オプションについて
     * LLMの出力をファイルに反映します 
+  * '-d', '--dry-run' オプションについて
+    * service/makeの引数dryRunに渡す

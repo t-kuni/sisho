@@ -22,19 +22,21 @@ func NewMakeCommand(makeService *make.MakeService) *MakeCommand {
 	var applyFlag bool
 	var chainFlag bool
 	var inputFlag bool
+	var dryRunFlag bool
 
 	cmd := &cobra.Command{
 		Use:   "make [path...]",
 		Short: "Generate files using LLM",
 		Long:  `Generate files at the specified paths using LLM based on the knowledge sets.`,
 		Args:  cobra.MinimumNArgs(1),
-		RunE:  runMake(&promptFlag, &applyFlag, &chainFlag, &inputFlag, makeService),
+		RunE:  runMake(&promptFlag, &applyFlag, &chainFlag, &inputFlag, &dryRunFlag, makeService),
 	}
 
 	cmd.Flags().BoolVarP(&promptFlag, "prompt", "p", false, "Open editor for additional instructions")
 	cmd.Flags().BoolVarP(&applyFlag, "apply", "a", false, "Apply LLM output to files")
 	cmd.Flags().BoolVarP(&chainFlag, "chain", "c", false, "Include dependent files based on deps-graph")
 	cmd.Flags().BoolVarP(&inputFlag, "input", "i", false, "Read additional instructions from stdin")
+	cmd.Flags().BoolVarP(&dryRunFlag, "dry-run", "d", false, "Perform a dry run without applying changes")
 
 	return &MakeCommand{
 		CobraCommand: cmd,
@@ -47,6 +49,7 @@ func runMake(
 	applyFlag *bool,
 	chainFlag *bool,
 	inputFlag *bool,
+	dryRunFlag *bool,
 	makeService *make.MakeService,
 ) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
@@ -72,7 +75,7 @@ func runMake(
 			fmt.Println(instructions)
 		}
 
-		err := makeService.Make(args, *applyFlag, *chainFlag, instructions)
+		err := makeService.Make(args, *applyFlag, *chainFlag, instructions, *dryRunFlag)
 		if err != nil {
 			return eris.Wrap(err, "failed to execute make command")
 		}

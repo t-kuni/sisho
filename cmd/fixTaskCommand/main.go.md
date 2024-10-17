@@ -26,6 +26,8 @@ command fix:task [taskName]
     * `-t`, `--try` オプション
       * 試行回数
       * デフォルト：1
+    * '-d', '--dry-run' オプションについて
+      * service/makeの引数dryRunに渡す
 * 履歴データについて
     * fix:task毎に `プロジェクトルート/.sisho/fixTask/XXXX` フォルダを作成する
         * XXXXはKSUID
