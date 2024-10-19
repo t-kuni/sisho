@@ -18,6 +18,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Install mockgen
+        run: go install go.uber.org/mock/mockgen@latest
+
       - name: Generate
         run: go generate ./...
 

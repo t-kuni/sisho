@@ -6,5 +6,6 @@
   * macOS
 * Goバージョンはgo.modに記載されているバージョンを使用
 * 実行内容
+  * go install go.uber.org/mock/mockgen@latest
   * go generate ./...
   * go test ./...
