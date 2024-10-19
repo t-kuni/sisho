@@ -264,7 +264,7 @@ func createHistoryDir(rootDir string, timer timer.ITimer, ksuidGenerator ksuid.I
 		return "", eris.Wrap(err, "failed to create history directory")
 	}
 
-	timeFile := filepath.Join(historyDir, timer.Now().Format("2006-01-02T15:04:05"))
+	timeFile := filepath.Join(historyDir, timer.Now().Format("2006-01-02T15-04-05"))
 	_, err = os.Create(timeFile)
 	if err != nil {
 		return "", eris.Wrap(err, "failed to create time file")
