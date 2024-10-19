@@ -18,5 +18,8 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Generate
+        run: go generate ./...
+
       - name: Run tests
         run: go test ./...
