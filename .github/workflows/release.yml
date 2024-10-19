@@ -12,6 +12,13 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            output_name: sisho-linux
+          - os: macos-latest
+            output_name: sisho-macos
+          - os: windows-latest
+            output_name: sisho-windows.exe
 
     steps:
       - uses: actions/checkout@v4
@@ -23,16 +30,12 @@ jobs:
 
       - name: Build binary
         run: |
-          go build -o sisho
-
-      - name: Rename binary for platform
-        run: |
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then mv sisho sisho.exe; fi
+          go build -o ${{ matrix.output_name }}
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
-          files: ./sisho${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          files: ./${{ matrix.output_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
