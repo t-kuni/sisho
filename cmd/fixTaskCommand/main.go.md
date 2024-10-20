@@ -32,7 +32,7 @@ command fix:task [taskName]
     * fix:task毎に `プロジェクトルート/.sisho/fixTask/XXXX` フォルダを作成する
         * XXXXはKSUID
     * 履歴フォルダには以下のファイルを作成する
-        * `YYYY-MM-DDTHH:MM:SS` : makeを実行した日時(ファイルは空ファイル)
+        * `YYYY-MM-DDTHH-MM-SS` : makeを実行した日時(ファイルは空ファイル)
         * `prompt_XX.md` : promptの内容(XXは1から始まる連番)
             * プロンプトの組み立てが完成した直後に保存する
         * `answer_XX.md` : promptに対する回答(XXは1から始まる連番)

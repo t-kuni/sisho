@@ -1,6 +1,6 @@
 module github.com/t-kuni/sisho
 
-go 1.19
+go 1.23
 
 require (
 	github.com/go-resty/resty/v2 v2.14.0
