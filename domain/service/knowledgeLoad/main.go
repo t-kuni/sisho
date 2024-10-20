@@ -5,6 +5,8 @@ import (
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 type KnowledgeLoadService struct {
@@ -29,6 +31,10 @@ func (s *KnowledgeLoadService) LoadKnowledge(rootDir string, knowledgeList []kno
 		relPath, err := filepath.Rel(rootDir, k.Path)
 		if err != nil {
 			return nil, err
+		}
+
+		if runtime.GOOS == "windows" {
+			relPath = strings.ReplaceAll(relPath, `\`, `/`)
 		}
 
 		converted := prompts.Knowledge{
