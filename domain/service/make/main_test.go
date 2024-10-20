@@ -110,6 +110,7 @@ dummy text
 			mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
+					assert.NotContains(t, messages[0].Content, space.Dir)
 					assert.Contains(t, messages[0].Content, "aaa/bbb/ccc/ddd.txt")
 					assert.Contains(t, messages[0].Content, "CURRENT_CONTENT")
 					return claude.GenerationResult{
@@ -254,6 +255,7 @@ UPDATED_CONTENT
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 						content := messages[0].Content
+						assert.NotContains(t, content, space.Dir)
 						// Check if knowledge from .knowledge.yml is included
 						assert.Contains(t, content, "aaa/bbb/SPEC.md")
 						assert.Contains(t, content, "This is SPEC.md")
@@ -303,6 +305,7 @@ UPDATED_CONTENT
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 						content := messages[0].Content
+						assert.NotContains(t, content, space.Dir)
 						// Check if knowledge from .knowledge.yml is included
 						assert.Contains(t, content, "aaa/bbb/SPEC.md")
 						assert.Contains(t, content, "This is SPEC.md")
@@ -350,6 +353,7 @@ UPDATED_CONTENT
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 						content := messages[0].Content
+						assert.NotContains(t, content, space.Dir)
 						// Check if knowledge from .knowledge.yml is included
 						assert.Contains(t, content, "aaa/bbb/SPEC.md")
 						assert.Contains(t, content, "This is SPEC.md")
@@ -399,6 +403,7 @@ UPDATED_CONTENT
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 						content := messages[0].Content
+						assert.NotContains(t, content, space.Dir)
 						assert.Contains(t, content, "aaa/bbb/SPEC.md")
 						assert.Contains(t, content, "This is SPEC.md")
 						return claude.GenerationResult{
@@ -445,6 +450,7 @@ UPDATED_CONTENT
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 						content := messages[0].Content
+						assert.NotContains(t, content, space.Dir)
 						assert.Contains(t, content, "aaa/bbb/SPEC.md")
 						assert.Contains(t, content, "This is SPEC.md")
 						return claude.GenerationResult{
@@ -491,6 +497,7 @@ UPDATED_CONTENT
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 						content := messages[0].Content
+						assert.NotContains(t, content, space.Dir)
 						assert.Contains(t, content, "aaa/bbb/SPEC.md")
 						assert.Contains(t, content, "This is SPEC.md")
 						return claude.GenerationResult{
@@ -549,6 +556,7 @@ UPDATED_CONTENT
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 					content := messages[0].Content
+					assert.NotContains(t, content, space.Dir)
 					assert.Equal(t, 1, strings.Count(content, "aaa/bbb/ccc/ddd.txt.md"), "aaa/bbb/ccc/ddd.txt.md should be included only once")
 					assert.Equal(t, 1, strings.Count(content, "This is ddd.txt.md"), "aaa/bbb/ccc/ddd.txt.md should be included only once")
 					return claude.GenerationResult{
@@ -595,6 +603,7 @@ UPDATED_CONTENT
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 					content := messages[0].Content
+					assert.NotContains(t, content, space.Dir)
 					assert.Contains(t, content, "aaa/bbb/ccc/ddd.txt.md")
 					assert.Contains(t, content, "This is ddd.txt.md")
 					return claude.GenerationResult{
@@ -641,6 +650,7 @@ UPDATED_CONTENT
 			mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 					content := messages[0].Content
+					assert.NotContains(t, content, space.Dir)
 					assert.NotContains(t, content, "aaa/bbb/ddd.txt.md")
 					assert.NotContains(t, content, "This is ddd.txt.md")
 					return claude.GenerationResult{
@@ -695,6 +705,7 @@ UPDATED_CONTENT%d
 				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
+						assert.NotContains(t, messages[0].Content, space.Dir)
 						//assert.Contains(t, messages[0].Content, "FILE3_CONTENT")
 						return claude.GenerationResult{
 							Content:           fmt.Sprintf(generatedFormat, "file3.go", 1),
@@ -703,6 +714,7 @@ UPDATED_CONTENT%d
 					})
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
+						assert.NotContains(t, messages[0].Content, space.Dir)
 						//assert.Contains(t, messages[0].Content, "FILE2_CONTENT")
 						return claude.GenerationResult{
 							Content:           fmt.Sprintf(generatedFormat, "file2.go", 2),
@@ -711,6 +723,7 @@ UPDATED_CONTENT%d
 					})
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
+						assert.NotContains(t, messages[0].Content, space.Dir)
 						//assert.Contains(t, messages[0].Content, "FILE1_CONTENT")
 						return claude.GenerationResult{
 							Content:           fmt.Sprintf(generatedFormat, "file1.go", 3),
@@ -803,6 +816,7 @@ UPDATED_CONTENT%d
 				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
+						assert.NotContains(t, messages[0].Content, space.Dir)
 						return claude.GenerationResult{
 							Content:           fmt.Sprintf(generatedFormat, "file3.go", 1),
 							TerminationReason: "success",
@@ -856,6 +870,7 @@ UPDATED_CONTENT
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 						content := messages[0].Content
+						assert.NotContains(t, content, space.Dir)
 						assert.Contains(t, content, "# Folder Structure")
 						assert.Contains(t, content, "file1.go")
 						assert.Contains(t, content, "/dir1")
@@ -910,6 +925,7 @@ UPDATED_CONTENT
 				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
 						content := messages[0].Content
+						assert.NotContains(t, content, space.Dir)
 						assert.Contains(t, content, "# Folder Structure")
 						assert.Contains(t, content, "file1.go")
 						assert.Contains(t, content, "/dir1")
