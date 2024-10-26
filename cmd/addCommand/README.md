@@ -1,7 +1,8 @@
 # addCommand
 
-カレントディレクトリの.knowledges.ymlに対して、指定されたファイルを追加します。
-カレントディレクトリに.knowledges.ymlが存在しない場合は、新規に作成します。
+* カレントディレクトリの.knowledges.ymlに対して、指定されたファイルを追加します。
+* カレントディレクトリに.knowledges.ymlが存在しない場合は、新規に作成します。
+* ファイルパスをファイルに書き込む前にutil/pathのBeforeWrite関数に掛ける
 
 ## Syntax
 

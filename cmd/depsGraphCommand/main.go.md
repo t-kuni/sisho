@@ -20,4 +20,5 @@ command deps-graph
     * Dependent, Dependencyともにプロジェクトルートからの相対パス
   * 出力
     * map[Dependency][]Dependent
+    * ファイルパスをutil/pathのBeforeWrite関数に掛ける
 * 依存グラフを `.sisho/deps-graph.json` (プロジェクトルートからの相対パス) に保存します

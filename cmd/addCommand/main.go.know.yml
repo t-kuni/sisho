@@ -2,3 +2,6 @@ knowledge:
   - path: ../../domain/repository/knowledge/main.go
     kind: implementations
     chain-make: true
+  - path: "@/util/path/main_other.go"
+    kind: implementations
+    chain-make: true

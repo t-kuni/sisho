@@ -9,6 +9,7 @@ import (
 	"github.com/t-kuni/sisho/domain/service/configFindService"
 	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
 	"github.com/t-kuni/sisho/domain/service/projectScan"
+	"github.com/t-kuni/sisho/util/path"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,9 +81,9 @@ func runDepsGraph(
 					if err != nil {
 						return eris.Wrapf(err, "failed to get relative path: %s", k.Path)
 					}
-					dependency := depsGraph.Dependency(filepath.Clean(relPath))
+					dependency := depsGraph.Dependency(path.BeforeWrite(filepath.Clean(relPath)))
 					// 依存する側のパス
-					dependent := depsGraph.Dependent(strings.TrimSuffix(pathFromRoot, ".know.yml"))
+					dependent := depsGraph.Dependent(path.BeforeWrite(strings.TrimSuffix(pathFromRoot, ".know.yml")))
 					graph[dependency] = append(graph[dependency], dependent)
 				}
 			}

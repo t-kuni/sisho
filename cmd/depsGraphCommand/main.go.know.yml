@@ -14,3 +14,6 @@ knowledge:
   - path: "@/domain/service/knowledgePathNormalize/main.go"
     kind: implementations
     chain-make: true
+  - path: "@/util/path/main_other.go"
+    kind: implementations
+    chain-make: true
