@@ -30,7 +30,7 @@ jobs:
 
       - name: Build binary
         run: |
-          go build -o ${{ matrix.output_name }}
+          make APP_NAME=${{ matrix.output_name }}
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
