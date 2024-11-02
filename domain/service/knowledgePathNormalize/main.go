@@ -1,9 +1,11 @@
 package knowledgePathNormalize
 
 import (
-	"github.com/t-kuni/sisho/domain/repository/knowledge"
 	"path/filepath"
 	"strings"
+
+	"github.com/t-kuni/sisho/domain/repository/knowledge"
+	pathUtil "github.com/t-kuni/sisho/util/path"
 )
 
 type KnowledgePathNormalizeService struct{}
@@ -27,7 +29,12 @@ func (s *KnowledgePathNormalizeService) NormalizePaths(projectRoot string, knowl
 }
 
 func (s *KnowledgePathNormalizeService) NormalizePath(projectRoot, knowledgeFileDir, path string) (string, error) {
+	var err error
 	if filepath.IsAbs(path) {
+		path, err = pathUtil.AfterGetAbsPath(path)
+		if err != nil {
+			return path, err
+		}
 		return path, nil
 	}
 
@@ -35,5 +42,10 @@ func (s *KnowledgePathNormalizeService) NormalizePath(projectRoot, knowledgeFile
 		return filepath.Join(projectRoot, strings.TrimPrefix(path, "@/")), nil
 	}
 
-	return filepath.Abs(filepath.Join(knowledgeFileDir, path))
+	path, err = filepath.Abs(filepath.Join(knowledgeFileDir, path))
+	if err != nil {
+		return path, err
+	}
+
+	return path, nil
 }

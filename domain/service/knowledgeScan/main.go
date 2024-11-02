@@ -1,12 +1,13 @@
 package knowledgeScan
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/rotisserie/eris"
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
 	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
-	"os"
-	"path/filepath"
 )
 
 type KnowledgeScanService struct {

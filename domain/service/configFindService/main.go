@@ -6,6 +6,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+
+	"github.com/t-kuni/sisho/util/path"
 )
 
 type ConfigFindService struct {
@@ -24,6 +26,11 @@ func NewConfigFindService(fileRepository FileRepository) *ConfigFindService {
 
 func (s *ConfigFindService) FindConfig() (string, error) {
 	currentDir, err := s.fileRepository.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	currentDir, err = path.AfterGetAbsPath(currentDir)
 	if err != nil {
 		return "", err
 	}

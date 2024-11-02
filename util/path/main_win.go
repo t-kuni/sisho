@@ -2,6 +2,12 @@
 
 package path
 
+import "strings"
+
 func BeforeWrite(path string) string {
-	return strings.ReplaceAll(relPath, `\`, `/`)
+	return strings.ReplaceAll(path, `\`, `/`)
+}
+
+func AfterGetAbsPath(path string) (string, error) {
+	return path, nil
 }
