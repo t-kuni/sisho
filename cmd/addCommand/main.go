@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/t-kuni/sisho/domain/model/kinds"
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
+	pathUtil "github.com/t-kuni/sisho/util/path"
 	"os"
 	"path/filepath"
 )
@@ -48,7 +49,7 @@ func NewAddCommand(knowledgeRepo knowledge.Repository) *AddCommand {
 				return eris.Wrap(err, "failed to get relative path")
 			}
 			newKnowledge := knowledge.Knowledge{
-				Path: relPath,
+				Path: pathUtil.BeforeWrite(relPath),
 				Kind: kindName,
 			}
 			knowList = append(knowList, newKnowledge)

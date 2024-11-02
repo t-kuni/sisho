@@ -22,6 +22,7 @@ command extract [path]
   * LLMの回答にCapturable Code Blockで`[ファイル名].know.yml`の内容が含まれるので、これを切り出した結果を知識リストとする
   * LLMの回答から抽出した知識リストのパスはプロジェクトルートからの相対パスになっている（@表記ではない）
     * filepath.Cleanに掛けて、先頭に `@/` を付与して @表記に変換して保存する
+  * LLMの回答から抽出した知識リストのパスをutil/pathのBeforeWrite関数を掛ける
 * 知識リストの重複チェックは knowledgePathNormalize で正規化したパス同士で比較する（この正規化したパスは保存には使わない）
 * フォルダ構造情報をプロンプトに追加する
   * folderStructureMakeを使う

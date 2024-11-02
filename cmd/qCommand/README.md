@@ -28,7 +28,7 @@ command q [path1], [path2]...
   * question毎に `プロジェクトルート/.sisho/history/questions/XXXX` フォルダを作成する（これを単体履歴フォルダと呼ぶ）
     * XXXXはKSUID
   * 履歴フォルダには以下のファイルを作成する
-    * `YYYY-MM-DDTHH:MM:SS` : questionを実行した日時(ファイルは空ファイル)
+    * `YYYY-MM-DDTHH-MM-SS` : questionを実行した日時(ファイルは空ファイル)
     * `prompt.md` : promptの内容
       * プロンプトの組み立てが完成した直後に保存する
     * `answer.md` : promptに対する回答

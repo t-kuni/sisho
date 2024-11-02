@@ -208,7 +208,7 @@ UPDATED_CONTENT
 		err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt", "aaa/bbb/ccc/eee.txt"}, true, false, "", false)
 		assert.NoError(t, err)
 
-		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "2022-01-01T00:00:00"))
+		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "2022-01-01T00-00-00"))
 		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "prompt_01.md"))
 		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "answer_01.md"))
 		space.AssertExistPath(filepath.Join(".sisho", "history", "test-ksuid", "prompt_02.md"))

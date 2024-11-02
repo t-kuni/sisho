@@ -1,11 +1,13 @@
 package testUtil
 
 import (
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/t-kuni/sisho/util/path"
 )
 
 type Space struct {
@@ -21,6 +23,9 @@ func BeginTestSpace(t *testing.T) Space {
 	assert.NoError(t, err)
 
 	tempDir, err := os.MkdirTemp("", "")
+	assert.NoError(t, err)
+
+	tempDir, err = path.AfterGetAbsPath(tempDir)
 	assert.NoError(t, err)
 
 	os.Chdir(tempDir)
