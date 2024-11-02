@@ -18,8 +18,8 @@ jobs:
             output_name: sisho-linux
           - os: macos-latest
             output_name: sisho-macos
-          - os: windows-latest
-            output_name: sisho-windows.exe
+#          - os: windows-latest
+#            output_name: sisho-windows.exe
 
     steps:
       - uses: actions/checkout@v4
