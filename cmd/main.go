@@ -9,6 +9,7 @@ import (
 	"github.com/t-kuni/sisho/cmd/initCommand"
 	"github.com/t-kuni/sisho/cmd/makeCommand"
 	"github.com/t-kuni/sisho/cmd/qCommand"
+	"github.com/t-kuni/sisho/cmd/versionCommand"
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
 	"github.com/t-kuni/sisho/domain/service/chatFactory"
 	"github.com/t-kuni/sisho/domain/service/configFindService"
@@ -66,6 +67,7 @@ func NewRootCommand() *RootCommand {
 	openAiClient := openAi.NewOpenAIClient()
 	chatFactory := chatFactory.NewChatFactory(openAiClient, claudeClient)
 
+	versionCmd := versionCommand.NewVersionCommand()
 	initCmd := initCommand.NewInitCommand(configRepo, fileRepo)
 	addCmd := addCommand.NewAddCommand(knowledgeRepo)
 	makeService := make.NewMakeService(
@@ -118,6 +120,7 @@ func NewRootCommand() *RootCommand {
 		extractCodeBlockSvc,
 	)
 
+	cmd.AddCommand(versionCmd.CobraCommand)
 	cmd.AddCommand(initCmd.CobraCommand)
 	cmd.AddCommand(addCmd.CobraCommand)
 	cmd.AddCommand(makeCmd.CobraCommand)
