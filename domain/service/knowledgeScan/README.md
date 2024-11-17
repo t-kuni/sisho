@@ -12,4 +12,6 @@
 * knowledgePathNormalizeを用いてKnowledge.Pathを絶対パスに変換する
 * 同時に単一ファイル知識リストファイル（`[ファイル名(拡張子除く)].know.yml`）も読み込む
   * 読み込んだ直後にknowledgePathNormalizeを用いてKnowledge.Pathを絶対パスに変換する
+* Kindが `knowledge-list` の場合は、Pathに指定されたファイルを追加の知識リストファイルとして読み込む
+  * 再帰的に読み込めるように実装する
 * 最後に、Knowledge.Pathが重複する場合は１つにまとめる

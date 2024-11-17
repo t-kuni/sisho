@@ -368,6 +368,61 @@ UPDATED_CONTENT
 			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", false)
 			assert.NoError(t, err)
 		})
+
+		t.Run("別のknowledge.ymlを読み込むパターン", func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			space := testUtil.BeginTestSpace(t)
+			defer space.CleanUp()
+
+			// Setup Files
+			space.WriteFile("sisho.yml", []byte(`
+llm:
+   driver: anthropic
+   model: claude-3-5-sonnet-20240620
+`))
+			space.WriteFile("aaa/bbb/ccc/ddd.txt", []byte("CURRENT_CONTENT"))
+			space.WriteFile("aaa/bbb/ccc/.knowledge.yml", []byte(`
+knowledge:
+  - path: "@/aaa/bbb/.knowledge.yml"
+    kind: knowledge-list
+`))
+
+			space.WriteFile("aaa/bbb/SPEC.md", []byte("This is SPEC.md"))
+			space.WriteFile("aaa/bbb/.knowledge.yml", []byte(`
+knowledge:
+  - path: "@/aaa/bbb/SPEC.md"
+    kind: specifications
+`))
+
+			generated := `
+<!-- CODE_BLOCK_BEGIN -->` + "```" + `aaa/bbb/ccc/ddd.txt
+UPDATED_CONTENT
+` + "```" + `<!-- CODE_BLOCK_END -->
+`
+			testee := factory(mockCtrl, func(mocks Mocks) {
+				mocks.Timer.EXPECT().Now().Return(testUtil.NewTime("2022-01-01T00:00:00Z")).AnyTimes()
+				mocks.ClaudeClient.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(messages []claude.Message, model string) (claude.GenerationResult, error) {
+						content := messages[0].Content
+						assert.NotContains(t, content, "aaa/bbb/.knowledge.yml")
+						assert.NotContains(t, content, "knowledge-list")
+						assert.NotContains(t, content, space.Dir)
+						// Check if knowledge from .knowledge.yml is included
+						assert.Contains(t, content, "aaa/bbb/SPEC.md")
+						assert.Contains(t, content, "This is SPEC.md")
+						return claude.GenerationResult{
+							Content:           generated,
+							TerminationReason: "success",
+						}, nil
+					})
+				mocks.FileRepository.EXPECT().Getwd().Return(space.Dir, nil).AnyTimes()
+				mocks.KsuidGenerator.EXPECT().New().Return("test-ksuid")
+			})
+			err := testee.Make([]string{"aaa/bbb/ccc/ddd.txt"}, true, false, "", false)
+			assert.NoError(t, err)
+		})
 	})
 
 	t.Run("単一ファイル知識リストファイルについて", func(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/rotisserie/eris"
+	"github.com/t-kuni/sisho/domain/model/kinds"
 	"github.com/t-kuni/sisho/domain/repository/knowledge"
 	"github.com/t-kuni/sisho/domain/service/autoCollect"
 	"github.com/t-kuni/sisho/domain/service/knowledgePathNormalize"
@@ -78,7 +79,7 @@ func (s *KnowledgeScanService) ScanKnowledge(rootDir string, targetPath string) 
 	for _, file := range autoCollectedFiles {
 		allKnowledge = append(allKnowledge, knowledge.Knowledge{
 			Path: file,
-			Kind: "specifications", // Auto-collected files are treated as specifications
+			Kind: kinds.KindNameSpecifications, // Auto-collected files are treated as specifications
 		})
 	}
 
@@ -86,6 +87,12 @@ func (s *KnowledgeScanService) ScanKnowledge(rootDir string, targetPath string) 
 	err = s.knowledgePathNormalizeService.NormalizePaths(rootDir, targetPath, &allKnowledge)
 	if err != nil {
 		return nil, eris.Wrap(err, "failed to normalize paths for all knowledge")
+	}
+
+	// Process knowledge-list kind
+	allKnowledge, err = s.processKnowledgeListKind(rootDir, allKnowledge)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to process knowledge-list kind")
 	}
 
 	// Remove duplicates
@@ -156,4 +163,49 @@ func (s *KnowledgeScanService) scanKnowledgeKnowYml(rootDir string, targetPath s
 	}
 
 	return knowledgeList, nil
+}
+
+func (s *KnowledgeScanService) processKnowledgeListKind(rootDir string, knowledgeList []knowledge.Knowledge) ([]knowledge.Knowledge, error) {
+	var result []knowledge.Knowledge
+
+	for _, k := range knowledgeList {
+		if k.Kind == kinds.KindNameKnowledgeList {
+			additionalKnowledge, err := s.readKnowledgeListFile(rootDir, k.Path)
+			if err != nil {
+				return nil, eris.Wrapf(err, "failed to read knowledge-list file: %s", k.Path)
+			}
+			result = append(result, additionalKnowledge...)
+		} else {
+			result = append(result, k)
+		}
+	}
+
+	return result, nil
+}
+
+func (s *KnowledgeScanService) readKnowledgeListFile(rootDir, path string) ([]knowledge.Knowledge, error) {
+	knowledgeFile, err := s.knowledgeRepo.Read(path)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to read knowledge-list file")
+	}
+
+	err = s.knowledgePathNormalizeService.NormalizePaths(rootDir, path, &knowledgeFile.KnowledgeList)
+	if err != nil {
+		return nil, eris.Wrap(err, "failed to normalize paths for knowledge-list file")
+	}
+
+	var result []knowledge.Knowledge
+	for _, k := range knowledgeFile.KnowledgeList {
+		if k.Kind == kinds.KindNameKnowledgeList {
+			additionalKnowledge, err := s.readKnowledgeListFile(rootDir, k.Path)
+			if err != nil {
+				return nil, eris.Wrapf(err, "failed to read nested knowledge-list file: %s", k.Path)
+			}
+			result = append(result, additionalKnowledge...)
+		} else {
+			result = append(result, k)
+		}
+	}
+
+	return result, nil
 }
