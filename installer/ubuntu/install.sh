@@ -26,7 +26,11 @@ INSTALL_DIR="/usr/local/bin"
 
 # バイナリのダウンロードとインストール
 echo "Downloading sisho ${VERSION}..."
-sudo curl -L -o "${INSTALL_DIR}/sisho" "${DOWNLOAD_URL}"
+if ! sudo curl -L -o "${INSTALL_DIR}/sisho" "${DOWNLOAD_URL}"; then
+    echo "Error: Failed to download sisho. Exiting."
+    exit 1
+fi
+
 sudo chmod +x "${INSTALL_DIR}/sisho"
 
 # PATHの確認と追加
